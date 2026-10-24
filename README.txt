@@ -1,4 +1,4 @@
-Quack Harbor v1.1
+Quack Harbor v1.2
 
 Files: index.html, sw.js, manifest.webmanifest, and four icon PNGs.
 Put all of them in the top folder of a GitHub Pages repo (or any static host).

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#1fb0d3">
-<meta name="app-version" content="1.1">
+<meta name="app-version" content="1.2">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -403,6 +403,44 @@ body.gutters .act-super{position:fixed;left:max(12px,calc(env(safe-area-inset-le
 .art-export summary{font-family:var(--f-display);font-size:20px;cursor:pointer;}
 .art-export ol{margin:10px 0;padding-left:20px;color:var(--muted);font-size:15px;line-height:1.5;}
 .art-export textarea{width:100%;min-height:120px;font:13px/1.4 ui-monospace,Menlo,Consolas,monospace;border:2px solid var(--line);border-radius:12px;padding:8px;color:var(--ink);background:#fffdf8;-webkit-user-select:text;user-select:text;}
+.card.wide{width:min(100%,760px);}
+.setup-dots{display:flex;gap:8px;justify-content:center;}
+.setup-dots i{width:12px;height:12px;border-radius:50%;background:var(--line);transition:all .25s;}
+.setup-dots i.done{background:var(--leaf-d);}
+.setup-dots i.on{background:var(--leaf);width:30px;border-radius:8px;}
+#setup-body{display:grid;gap:14px;}
+#setup-body h2{margin:0;}
+#setup-body > p{margin:0;color:var(--muted);font-size:17px;}
+.choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+.choice-grid.three{grid-template-columns:repeat(3,minmax(0,1fr));}
+.choice{position:relative;border:0;border-radius:20px;background:#fff;box-shadow:inset 0 -5px 0 var(--line);padding:10px 10px 14px;display:grid;gap:4px;text-align:center;color:var(--ink);transition:transform .15s;}
+.choice canvas{width:100%;height:auto;aspect-ratio:8/5;border-radius:14px;display:block;margin-bottom:4px;}
+.choice b{font-family:var(--f-display);font-weight:400;font-size:22px;}
+.choice small{color:var(--leaf-d);font-weight:900;font-size:14px;}
+.choice span{color:var(--muted);font-size:14px;line-height:1.3;}
+.choice.on{box-shadow:inset 0 0 0 5px var(--leaf),inset 0 -5px 0 var(--line);transform:translateY(-2px);}
+.choice.on::after{content:"✓";position:absolute;top:4px;right:4px;width:30px;height:30px;border-radius:50%;background:var(--leaf);color:#fff;font-weight:900;font-size:18px;display:grid;place-items:center;box-shadow:0 2px 0 var(--leaf-d);}
+.choice .best{position:absolute;top:16px;left:16px;background:var(--gold);color:var(--ink);font-style:normal;font-weight:900;font-size:12px;padding:3px 9px;border-radius:999px;box-shadow:0 2px 0 var(--gold-d);}
+.setup-nav{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center;}
+.btn.ghost{background:#fff;color:var(--ink);text-shadow:none;box-shadow:inset 0 -4px 0 var(--line);font-size:20px;}
+.ready{display:grid;justify-items:center;gap:10px;text-align:center;}
+.avatar.xl{width:170px;height:170px;font-size:78px;animation:readyBob 1.6s ease-in-out infinite;}
+@keyframes readyBob{50%{transform:translateY(-8px) rotate(-3deg);}}
+.ready-chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;}
+.ready-chips span{background:#fff;border-radius:999px;padding:6px 14px;font-weight:900;color:var(--ink);box-shadow:inset 0 -3px 0 var(--line);}
+.ptag{font-style:normal;font-size:13px;font-weight:900;color:var(--leaf-d);background:#fff;border-radius:999px;padding:2px 10px;}
+.ptag.new{color:#fff;background:var(--coral);}
+@media (max-width:560px){.choice-grid.three{grid-template-columns:minmax(0,1fr);}.choice-grid.three .choice{grid-template-columns:120px minmax(0,1fr);text-align:left;align-items:center;column-gap:10px;}.choice-grid.three .choice canvas{grid-row:span 3;margin:0;}}
+.cap-grid{display:grid;gap:14px;}.cap-fields{display:grid;gap:14px;align-content:center;}
+@media (max-height:520px){
+  .card.wide{padding:14px 18px;gap:10px;}
+  #setup-body{gap:8px;} #setup-body h2{font-size:26px;} #setup-body > p{font-size:14px;}
+  .choice{padding:6px 6px 8px;gap:2px;} .choice canvas{aspect-ratio:5/2;} .choice b{font-size:19px;} .choice span{font-size:12.5px;}
+  .avatar.xl{width:96px;height:96px;font-size:44px;}
+  .setup-nav .btn.big{font-size:24px;padding:10px 20px;} .setup-nav .btn.ghost{padding:10px 16px;}
+  .cap-grid .avatar.lg{width:96px;height:96px;font-size:44px;}
+}
+@media (max-height:520px) and (min-aspect-ratio:1/1){.cap-grid{grid-template-columns:auto minmax(0,1fr);align-items:center;}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;}}
 </style>
 </head>
@@ -440,7 +478,7 @@ body.gutters .act-super{position:fixed;left:max(12px,calc(env(safe-area-inset-le
     <div class="logo" aria-label="Quack Harbor"><span class="l1">Quack</span><span class="l2">Harbor</span></div>
     <p class="tag">Who's sailing today?</p>
     <div class="players" id="players-list"></div>
-    <p class="ver">Quack Harbor v1.1</p>
+    <p class="ver">Quack Harbor v1.2</p>
   </div>
 </section>
 
@@ -497,6 +535,14 @@ body.gutters .act-super{position:fixed;left:max(12px,calc(env(safe-area-inset-le
   </div>
 </section>
 
+<section class="screen" id="scr-setup" hidden>
+  <div class="card wide">
+    <div class="setup-dots" id="setup-dots"></div>
+    <div id="setup-body"></div>
+    <div class="setup-nav"><button class="btn ghost" id="setup-back">Back</button><button class="btn big go" id="setup-next">Next</button></div>
+    <input type="file" id="setup-photo" accept="image/*" hidden>
+  </div>
+</section>
 <section class="screen" id="scr-edit" hidden>
   <div class="card">
     <button class="back" id="edit-back" aria-label="Back">‹</button>
@@ -513,6 +559,7 @@ body.gutters .act-super{position:fixed;left:max(12px,calc(env(safe-area-inset-le
     <div class="swatches" id="edit-colors"></div>
     <div class="field"><label>Who's playing?</label><div class="seg" id="edit-modes"></div></div>
     <div class="field"><label>Steering</label><div class="seg" id="edit-steer"></div></div>
+    <div class="field"><label>Board size</label><div class="seg" id="edit-view"></div></div>
     <button class="btn big go" id="btn-edit-save">Save</button>
     <button class="link" id="btn-edit-delete">Remove this player</button>
     <div class="confirm" id="delete-confirm" hidden>
@@ -2830,6 +2877,105 @@ deliver = function () {
   const u = upLevel(PROFILE, 'refuel'); if (u && n) for (const k in G.cd) G.cd[k] = Math.max(0, G.cd[k] - n * u);
 };
 /* =====================================================================
+   v1.2 GRID LAYOUTS — islands sit on a tidy grid early in each world,
+   then shift, shrink and multiply as the boss gets closer
+   ===================================================================== */
+function freeRows(bands) {
+  const top = SHORE + 175, bot = 965, cuts = bands.map(b => [b.y - b.h / 2, b.y + b.h / 2]).sort((a, b) => a[0] - b[0]), gaps = [];
+  let y = top;
+  for (const [a, b] of cuts) { if (a > y) gaps.push([y, a]); y = Math.max(y, b); }
+  if (bot > y) gaps.push([y, bot]);
+  let rows = gaps.filter(g => g[1] - g[0] >= 146);
+  if (rows.length === 1 && rows[0][1] - rows[0][0] >= 520) { const [a, b] = rows[0], m = (a + b) / 2; rows = [[a, m - 10], [m + 10, b]]; }
+  return rows.sort((a, b) => (b[1] - b[0]) - (a[1] - a[0])).slice(0, 2).sort((a, b) => a[0] - b[0]);
+}
+const GRID_COLS = {
+  grid3: [[300, 800, 1300], [300, 800, 1300]],
+  brick: [[300, 800, 1300], [550, 1050]],
+  brickR: [[550, 1050], [300, 800, 1300]],
+  grid4: [[230, 610, 990, 1370], [230, 610, 990, 1370]],
+};
+function finishLayout(L, rects, r, world, T, lanes) {
+  const spec = [];
+  for (const R of rects) {
+    const opts = ['bottom', 'top', 'left', 'right'].map(side => {
+      const I = buildIsland({ x: R.x, y: R.y, w: R.w, h: R.h, jet: side, wall: '#fff', roof: '#fff', idx: 0 }), Lp = I.L;
+      if (Lp.y < SHORE + 120 || Lp.y > H - 55 || Lp.x < 70 || Lp.x > W - 70 || inClearZone(Lp.x, Lp.y, 40)) return null;
+      let clear = Infinity; for (const o of rects) if (o !== R) clear = Math.min(clear, rectGap(o, ptRect(Lp.x, Lp.y)));
+      if (clear < 95 || lanes.bands.some(bd => Math.abs(Lp.y - bd.y) < bd.h / 2 + 10)) return null;
+      return { side, score: Math.min(clear, 260) + r() * 90 };
+    }).filter(Boolean).sort((a, b) => b.score - a.score);
+    if (!opts.length) return null;
+    spec.push([Math.round(R.x), Math.round(R.y), R.w, R.h, opts[0].side]);
+  }
+  const isl = spec.map(a => buildIsland({ x: a[0], y: a[1], w: a[2], h: a[3], jet: a[4], wall: '#fff', roof: '#fff', idx: 0 }));
+  if (isl.some((A, i) => isl.some((B, j) => i < j && dist(A.L.x, A.L.y, B.L.x, B.L.y) < 150))) return null;
+  const pools = [], want = world.pools ? world.pools.length : 0;
+  for (let tries = 0; pools.length < want && tries < 300; tries++) {
+    const x = 200 + r() * (W - 400), y = SHORE + 230 + r() * (H - SHORE - 330);
+    if (inClearZone(x, y, 140) || rects.some(o => rectGap(o, ptRect(x, y)) < 150) || isl.some(I => dist(x, y, I.L.x, I.L.y) < 200)) continue;
+    if (pools.some(p => dist(x, y, p[0], p[1]) < 380) || lanes.bands.some(bd => Math.abs(y - bd.y) < bd.h / 2 + 60)) continue;
+    pools.push([Math.round(x), Math.round(y)]);
+  }
+  if (want && !pools.length) return null;
+  const rocks = [], nR = T.rocks ? T.rocks + Math.min(3, Math.floor((L - 1) / 8)) : 0;
+  for (let tries = 0; rocks.length < nR && tries < 400; tries++) {
+    const rad = 18 + Math.round(r() * 8), x = 120 + r() * (W - 240), y = SHORE + 140 + r() * (H - SHORE - 200);
+    if (inClearZone(x, y, 60) || rects.some(o => rectGap(o, ptRect(x, y)) < rad + 75) || isl.some(I => dist(x, y, I.L.x, I.L.y) < 120 + rad)) continue;
+    if (rocks.some(o => dist(x, y, o.x, o.y) < 130) || pools.some(p => dist(x, y, p[0], p[1]) < 200) || lanes.bands.some(bd => Math.abs(y - bd.y) < bd.h / 2 + 20)) continue;
+    rocks.push({ x: Math.round(x), y: Math.round(y), r: rad, ph: r() * 6 });
+  }
+  if (!layoutReachable(isl, rocks)) return null;
+  const off = Math.floor(r() * world.houses.length), houses = world.houses.map((_, i) => world.houses[(i + off) % world.houses.length]);
+  return { islands: spec, houses, drift: lanes.drift, current: lanes.current, rocks, pools, start: 800 };
+}
+function gridTry(L, r, world, T) {
+  const lw = levelInWorld(L), loops = Math.floor((L - 1) / (LEVELS_PER_WORLD * WORLDS.length));
+  const chaos = clamp((lw - 2) / 5 * 0.85 + loops * 0.25 + r() * 0.1, 0, 1);
+  const lanes = layoutLanes(world, T, r);
+  if (lanes.current && !(world.drifters || []).length) lanes.current.y = 615;
+  lanes.bands = lanes.drift.map(d => ({ y: d.y, h: (world.ice ? 54 : 40) + 70 }));
+  if (lanes.current) lanes.bands.push({ y: lanes.current.y, h: lanes.current.h + 60 });
+  const plan = lanes.bands.map(b => ({ y: b.y, h: b.h - (lanes.current && b.y === lanes.current.y ? 30 : 0) }));
+  const rows = freeRows(plan);
+  if (rows.length < 2) return null;
+  const kinds = chaos < 0.3 ? ['grid3', 'brick'] : chaos < 0.6 ? ['grid3', 'brick', 'brickR', 'grid4'] : ['grid4', 'grid4', 'brick', 'brickR'];
+  const kind = kinds[Math.floor(r() * kinds.length)], small = kind === 'grid4';
+  let cells = [];
+  GRID_COLS[kind].forEach((xs, ri) => xs.forEach(x => cells.push({ x, ri })));
+  cells = cells.filter(cl => !(cl.x > CLEAR_ZONE.x - 120 && (rows[cl.ri][0] + rows[cl.ri][1]) / 2 > CLEAR_ZONE.y - 120));
+  while (cells.length > 5 && r() < chaos * 0.3) cells.splice(Math.floor(r() * cells.length), 1);
+  const rects = [];
+  for (const cl of cells) {
+    const [a, b] = rows[cl.ri], maxH = Math.min(170, b - a - 16);
+    if (maxH < 130) return null;
+    const w = Math.round(((small ? 190 : 235) + (r() * 2 - 1) * chaos * (small ? 15 : 45)) / 10) * 10;
+    const h = Math.max(130, Math.min(maxH, Math.round((small ? 145 : 160) + (r() * 2 - 1) * chaos * 20)));
+    const jx = (r() * 2 - 1) * (6 + chaos * (small ? 30 : 75)), jy = (r() * 2 - 1) * (4 + chaos * 40);
+    const x = clamp(cl.x + jx, 90 + w / 2, W - 90 - w / 2), y = clamp((a + b) / 2 + jy, a + h / 2 + 4, b - h / 2 - 4);
+    const R = { x, y, w, h, l: x - w / 2, r: x + w / 2, t: y - h / 2, b: y + h / 2 };
+    if (R.r > CLEAR_ZONE.x - 50 && R.b > CLEAR_ZONE.y - 50) return null;
+    if (rects.some(o => rectGap(o, R) < 150)) return null;
+    rects.push(R);
+  }
+  return finishLayout(L, rects, r, world, T, lanes);
+}
+const _genLayoutRandom = genLayout;
+genLayout = function (L) {
+  if (LAYOUTS[L]) return LAYOUTS[L];
+  const tw = twistOf(L);
+  if (HANDMADE.has(tw) && (L <= LEVEL_TWISTS.length || tw === 'boss')) return _genLayoutRandom(L);
+  const world = worldOf(L), T = TWISTS[tw] || {};
+  /* late in a world, look at a few good layouts and keep the busiest one */
+  const want = levelInWorld(L) >= 5 ? 6 : 1;
+  let best = null, found = 0;
+  for (let attempt = 0; attempt < 400 && found < want; attempt++) {
+    const lay = gridTry(L, mulberry(L * 6151 + attempt * 92821 + 7), world, T);
+    if (lay) { found++; if (!best || lay.islands.length > best.islands.length) best = lay; }
+  }
+  return best ? (LAYOUTS[L] = best) : _genLayoutRandom(L);
+};
+/* =====================================================================
    RENDERING — everything is drawn with canvas shapes, no image files.
    ===================================================================== */
 const cv = $('cv'), ctx = cv.getContext('2d');
@@ -2892,9 +3038,9 @@ function drawTexts(c) {
 function resize() {
   const dpr = Math.min(2, window.devicePixelRatio || 1), cw = innerWidth, ch = innerHeight;
   cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr);
-  const sFit = Math.min(cw / W, ch / H), small = sFit < 0.5, follow = small && SAVE.view === 'close', gutters = small && !follow && cw > ch;
+  const sFit = Math.min(cw / W, ch / H), small = sFit < 0.5, view = (typeof PROFILE !== 'undefined' && PROFILE && PROFILE.view) || SAVE.view || 'whole', follow = view === 'close', gutters = small && !follow && cw > ch;
   document.body.classList.toggle('gutters', gutters);
-  const s = follow ? Math.max(sFit, Math.min(0.62, (ch - 56) / 620, cw / 700)) : gutters ? Math.min(ch / H, (cw - 2 * 104) / W) : sFit;
+  const s = follow ? (small ? Math.max(sFit, Math.min(0.62, (ch - 56) / 620, cw / 700)) : Math.min(sFit * 1.45, 1.25)) : gutters ? Math.min(ch / H, (cw - 2 * 104) / W) : sFit;
   VIEW = { s, dpr, cw, ch, follow, small, gutters, camX: -(cw - W * s) / 2 / s, camY: -(ch - H * s) / 2 / s };
   if (follow) updateCamera(0, true);
   buildStatic();
@@ -5077,7 +5223,7 @@ $('btn-yard').addEventListener('click', () => { SFX.click(); renderYard(); });
 $('btn-edit').addEventListener('click', () => { SFX.click(); openEdit(false); });
 $('btn-switch').addEventListener('click', () => { SFX.click(); renderPlayers(); });
 $('btn-sound').addEventListener('click', toggleSound); $('btn-sound2').addEventListener('click', toggleSound);
-$('btn-view').addEventListener('click', toggleView); $('btn-view2').addEventListener('click', toggleView);
+$('btn-view').addEventListener('click', () => toggleView()); $('btn-view2').addEventListener('click', () => toggleView());
 $('btn-music').addEventListener('click', toggleMusic); $('btn-music2').addEventListener('click', toggleMusic);
 document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click', () => { SFX.click(); renderHome(); }));
 $('btn-pause').addEventListener('click', e => { e.stopPropagation(); Sound.init(); SFX.click(); pauseGame(); });
@@ -5723,6 +5869,186 @@ function drawArtPreview(now) {
   artAnim = requestAnimationFrame(drawArtPreview);
 }
 loadHostedArt(); loadDeviceArt();
+/* =====================================================================
+   v1.2 NEW-PLAYER SETUP — captain, age range, steering and board size,
+   then straight into Level 1. Board size is now saved per player.
+   ===================================================================== */
+SCREENS.push('scr-setup');
+const SETUP_STEPS = ['captain', 'age', 'steer', 'board', 'ready'];
+let SETUP = null, setupAnim = 0;
+const needsSetup = p => !p.setupDone && (p.level || 1) <= 1 && !(p.ducks > 0);
+SAVE.profiles.forEach(p => { if (p.setupDone === undefined && ((p.level || 1) > 1 || p.ducks > 0)) { p.setupDone = true; p.view = p.view || SAVE.view || 'whole'; } });
+
+/* ---------- board size per player ---------- */
+const boardView = () => (PROFILE && PROFILE.view) || SAVE.view || 'whole';
+viewLabels = function () {
+  const t = 'Board: ' + (boardView() === 'close' ? 'Close-up' : 'Whole');
+  ['btn-view', 'btn-view2'].forEach(id => { const b = $(id); if (b) { b.textContent = t; b.hidden = false; } });
+};
+toggleView = function () {
+  const v = boardView() === 'close' ? 'whole' : 'close';
+  if (PROFILE) PROFILE.view = v; else SAVE.view = v;
+  persist(); SFX.click(); resize();
+};
+
+/* ---------- profile flow: new players go through setup ---------- */
+const _selectProfileV12 = selectProfile;
+selectProfile = function (p, quiet) {
+  if (!quiet && needsSetup(p)) { _selectProfileV12(p, true); resize(); openSetup(); return; }
+  const out = _selectProfileV12(p, quiet); resize(); return out;
+};
+const _openEditV12 = openEdit;
+openEdit = function (isNew) {
+  if (isNew) return openSetup();
+  _openEditV12(isNew);
+  EDIT.view = PROFILE.view || 'whole';
+  const box = $('edit-view'); box.innerHTML = '';
+  [['whole', 'Whole board', 'See the whole harbor'], ['close', 'Close-up', 'Bigger, camera follows the boat']].forEach(([id, n, d]) => {
+    const b = document.createElement('button'); b.dataset.id = id; b.innerHTML = `<b>${n}</b><small>${d}</small>`;
+    b.addEventListener('click', () => { EDIT.view = id; SFX.click(); paintEdit(); }); box.append(b);
+  });
+  paintEdit();
+};
+const _paintEditV12 = paintEdit;
+paintEdit = function () { _paintEditV12(); [...$('edit-view').children].forEach(b => b.classList.toggle('on', b.dataset.id === EDIT.view)); };
+$('btn-edit-save').addEventListener('click', () => { if (PROFILE && EDIT && EDIT.view) { PROFILE.view = EDIT.view; PROFILE.setupDone = true; persist(); resize(); } });
+const _renderPlayersV12 = renderPlayers;
+renderPlayers = function () {
+  _renderPlayersV12();
+  [...$('players-list').querySelectorAll('.pcard:not(.add)')].forEach((card, i) => {
+    const p = SAVE.profiles[i]; if (!p) return;
+    const tag = document.createElement('em'); tag.className = 'ptag' + (needsSetup(p) ? ' new' : '');
+    tag.textContent = needsSetup(p) ? 'Tap to set up' : MODES[p.mode].name; card.append(tag);
+  });
+};
+
+/* ---------- the setup screens ---------- */
+function openSetup() {
+  const p = PROFILE;
+  SETUP = { step: 0, name: p.name, color: p.color, photo: p.photo, mode: p.mode || 'big', steer: p.steer || 'tap', steerPicked: false, view: p.view || 'whole' };
+  renderSetup();
+}
+const setupProfile = () => ({ ...PROFILE, name: SETUP.name || '?', color: SETUP.color, photo: SETUP.photo, cfg: SETUP.photo ? -1 : PROFILE.cfg });
+function choiceHtml(prev, val, on, title, sub, desc, best) {
+  return `<button class="choice${on ? ' on' : ''}" data-v="${val}"><canvas data-prev="${prev}" width="480" height="300"></canvas>${best ? `<i class="best">${best}</i>` : ''}<b>${title}</b>${sub ? `<small>${sub}</small>` : ''}<span>${desc}</span></button>`;
+}
+function renderSetup() {
+  const st = SETUP_STEPS[SETUP.step], body = $('setup-body'), name = (SETUP.name || '').trim() || 'Captain';
+  $('setup-dots').innerHTML = SETUP_STEPS.map((_, i) => `<i class="${i === SETUP.step ? 'on' : i < SETUP.step ? 'done' : ''}"></i>`).join('');
+  $('setup-back').textContent = SETUP.step === 0 ? 'Cancel' : 'Back';
+  $('setup-next').innerHTML = st === 'ready' ? `${icon('play')}Start sailing!` : 'Next';
+  if (st === 'captain') {
+    body.innerHTML = `<h2>Who's the captain?</h2><p>Add a photo and a name. You can change them any time from Edit.</p>
+      <div class="cap-grid"><div class="edit-photo"><div class="avatar lg" id="setup-avatar"></div><div class="photo-btns"><label class="btn" for="setup-photo" tabindex="0">${icon('camera')}Choose photo</label><button class="btn warm" id="setup-photo-clear"${SETUP.photo ? '' : ' hidden'}>Remove</button></div></div>
+      <div class="cap-fields"><div class="field"><label for="setup-name">Captain name</label><input id="setup-name" maxlength="14" autocomplete="off"></div>
+      <div class="swatches" id="setup-colors"></div></div></div>`;
+    $('setup-name').value = SETUP.name; $('setup-name').addEventListener('input', e => { SETUP.name = e.target.value; paintSetupAvatar(); });
+    $('setup-photo-clear').addEventListener('click', () => { SETUP.photo = ''; SFX.click(); renderSetup(); });
+    const sw = $('setup-colors');
+    PLAYER_COLORS.forEach(c => { const b = document.createElement('button'); b.className = 'sw' + (c === SETUP.color ? ' on' : ''); b.style.setProperty('--c', c); b.setAttribute('aria-label', 'Color ' + c); b.addEventListener('click', () => { SETUP.color = c; SFX.click(); [...sw.children].forEach(x => x.classList.toggle('on', x === b)); paintSetupAvatar(); }); sw.append(b); });
+    paintSetupAvatar();
+  } else if (st === 'age') {
+    body.innerHTML = `<h2>How old is ${name}?</h2><p>This sets how tricky the game is. You can change it later in Edit.</p><div class="choice-grid three">` +
+      choiceHtml('age-little', 'little', SETUP.mode === 'little', 'Little Captain', 'Ages 2–3', 'No hearts to lose. Ducks wait on the dock until you come.') +
+      choiceHtml('age-big', 'big', SETUP.mode === 'big', 'Big Captain', 'Ages 4–5', 'Three hearts, sneaky creatures, and bosses.') +
+      choiceHtml('age-grown', 'grown', SETUP.mode === 'grown', 'Grown-up', 'Older kids and adults', 'Quick ducks, more creatures, short warnings.') + '</div>';
+    bindChoices(v => { SETUP.mode = v; if (!SETUP.steerPicked) SETUP.steer = MODES[v].steer; });
+  } else if (st === 'steer') {
+    const kid = SETUP.mode !== 'grown';
+    body.innerHTML = `<h2>How should ${name} steer?</h2><p>Both work with one finger. You can switch later in Edit.</p><div class="choice-grid">` +
+      choiceHtml('steer-tap', 'tap', SETUP.steer === 'tap', 'Tap to go', '', 'Tap or hold where the boat should sail.', kid ? 'Best for ages 2–5' : '') +
+      choiceHtml('steer-stick', 'stick', SETUP.steer === 'stick', 'Joystick', '', 'Drag anywhere and steer like a game controller.', kid ? '' : 'Best for grown-ups') + '</div>';
+    bindChoices(v => { SETUP.steer = v; SETUP.steerPicked = true; });
+  } else if (st === 'board') {
+    body.innerHTML = `<h2>How big should the board be?</h2><p>Pick what fits this screen. You can switch it from the pause menu.</p><div class="choice-grid">` +
+      choiceHtml('board-whole', 'whole', SETUP.view === 'whole', 'Whole board', '', 'See the whole harbor at once.', VIEW.small ? '' : 'Best on tablets') +
+      choiceHtml('board-close', 'close', SETUP.view === 'close', 'Close-up', '', 'Bigger characters. The camera follows the boat.', '') + '</div>';
+    bindChoices(v => { SETUP.view = v; });
+  } else {
+    const chips = [MODES[SETUP.mode].name, SETUP.steer === 'tap' ? 'Tap to go' : 'Joystick', SETUP.view === 'close' ? 'Close-up board' : 'Whole board'];
+    body.innerHTML = `<div class="ready"><div class="avatar xl" id="setup-avatar"></div><h2>Ready, Captain ${name}!</h2><p>The ducks are waiting. Bring them home to the shore.</p><div class="ready-chips">${chips.map(c => `<span>${c}</span>`).join('')}</div><button class="link" id="setup-home">Go to my harbor instead</button></div>`;
+    paintSetupAvatar();
+    $('setup-home').addEventListener('click', () => finishSetup(false));
+  }
+  show('scr-setup'); $('scr-setup').scrollTop = 0;
+  cancelAnimationFrame(setupAnim); setupAnim = requestAnimationFrame(drawSetupPreviews);
+}
+function bindChoices(onPick) {
+  $('setup-body').querySelectorAll('.choice').forEach(b => b.addEventListener('click', () => {
+    onPick(b.dataset.v); SFX.click(); $('setup-body').querySelectorAll('.choice').forEach(x => x.classList.toggle('on', x === b));
+  }));
+}
+function paintSetupAvatar() { const el = $('setup-avatar'); if (el) paintAvatarEl(el, setupProfile()); }
+function finishSetup(play) {
+  Object.assign(PROFILE, { name: (SETUP.name || '').trim().slice(0, 14) || 'Captain', color: SETUP.color, photo: SETUP.photo, mode: SETUP.mode, steer: SETUP.steer, view: SETUP.view, setupDone: true });
+  persist(); resize(); SFX.buy();
+  if (play) startGame(PROFILE.level); else renderHome();
+}
+$('setup-next').addEventListener('click', () => {
+  Sound.init();
+  if (SETUP_STEPS[SETUP.step] === 'ready') { finishSetup(true); return; }
+  SETUP.step++; SFX.click(); renderSetup();
+});
+$('setup-back').addEventListener('click', () => {
+  SFX.click();
+  if (SETUP.step === 0) { renderPlayers(); return; }
+  SETUP.step--; renderSetup();
+});
+$('setup-photo').addEventListener('change', e => {
+  const f = e.target.files && e.target.files[0]; if (!f) return;
+  const url = URL.createObjectURL(f), img = new Image();
+  img.onload = () => {
+    const S = 192, c = document.createElement('canvas'); c.width = c.height = S;
+    const x = c.getContext('2d'), m = Math.min(img.naturalWidth, img.naturalHeight);
+    x.drawImage(img, (img.naturalWidth - m) / 2, (img.naturalHeight - m) / 2, m, m, 0, 0, S, S);
+    SETUP.photo = c.toDataURL('image/jpeg', 0.85); URL.revokeObjectURL(url); SFX.buy(); renderSetup();
+  };
+  img.onerror = () => URL.revokeObjectURL(url);
+  img.src = url; e.target.value = '';
+});
+
+/* ---------- little animated pictures on the choice cards ---------- */
+function prevWater(c, w, h) { const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, WORLD.water[0]); g.addColorStop(1, WORLD.water[1]); c.fillStyle = g; c.fillRect(0, 0, w, h); }
+function prevBoat(c, x, y, a, s, t) {
+  c.save(); c.translate(x, y); c.rotate(a); c.scale(s, s); drawHull(c, curSkin(), t, false, PROFILE.decal); c.restore();
+  drawAvatar(c, x, y - 2, 19 * s, setupProfile(), t);
+}
+function drawSetupPreviews(now) {
+  if (CUR !== 'scr-setup') return;
+  const t = now / 1000;
+  document.querySelectorAll('#setup-body canvas[data-prev]').forEach(cv2 => {
+    const c = cv2.getContext('2d'), kind = cv2.dataset.prev;
+    c.setTransform(2, 0, 0, 2, 0, 0); const w = 240, h = 150;
+    if (kind.startsWith('age')) {
+      c.fillStyle = '#e9f7fb'; c.fillRect(0, 0, w, h); c.fillStyle = '#bfe9f5'; c.fillRect(0, 100, w, 50);
+      const bob = Math.sin(t * 3) * 3;
+      if (kind === 'age-little') { drawDuck(c, 120, 92 + bob, 2.2, 1, t * 6, { acc: 'eggshell', mood: 'happy', walk: true, t }); c.fillStyle = '#ffc531'; drawStar4(c, 60, 40, 7, t); drawStar4(c, 180, 34, 5, -t); }
+      else if (kind === 'age-big') { drawDuck(c, 100, 94 + bob, 2.3, 1, t * 6, { mood: 'happy', walk: true, t }); c.fillStyle = '#ff4d6d'; [150, 175, 200].forEach((x, i) => drawHeartShape(c, x, 40 + Math.sin(t * 4 + i) * 2, 9)); }
+      else { drawDuck(c, 80, 94 + bob, 2.3, 1, t * 6, { acc: 'shades', walk: true, t }); drawPeek(c, 'hippo', 180, 112, t, 'smug', { x: -1, y: 0 }, 0.75); }
+    } else if (kind === 'steer-tap') {
+      prevWater(c, w, h);
+      const pts = [[60, 110], [190, 50], [170, 120], [50, 45]], cyc = t / 1.8, k = cyc % 1, i = Math.floor(cyc) % pts.length, from = pts[(i + pts.length - 1) % pts.length], to = pts[i];
+      const e = 1 - Math.pow(1 - Math.min(1, k * 1.4), 3), bx = lerp(from[0], to[0], e), by = lerp(from[1], to[1], e);
+      c.strokeStyle = 'rgba(255,255,255,.9)'; c.lineWidth = 3; c.beginPath(); c.arc(to[0], to[1], 10 + (k * 30) % 10, 0, 7); c.stroke();
+      prevBoat(c, bx, by, Math.atan2(to[1] - from[1], to[0] - from[0]), 0.55, t);
+      if (k < 0.45) drawHand(c, to[0], to[1], t);
+    } else if (kind === 'steer-stick') {
+      prevWater(c, w, h);
+      const th = t * 1.1, bx = 150 + Math.cos(th) * 50, by = 75 + Math.sin(th) * 38, hd = Math.atan2(Math.cos(th) * 38, -Math.sin(th) * 50);
+      prevBoat(c, bx, by, hd, 0.55, t);
+      c.fillStyle = 'rgba(255,255,255,.25)'; c.strokeStyle = 'rgba(255,255,255,.8)'; c.lineWidth = 3; c.beginPath(); c.arc(46, 104, 30, 0, 7); c.fill(); c.stroke();
+      c.fillStyle = '#fff'; c.beginPath(); c.arc(46 + Math.cos(hd) * 16, 104 + Math.sin(hd) * 16, 13, 0, 7); c.fill();
+    } else if (kind === 'board-whole' || kind === 'board-close') {
+      prevWater(c, w, h);
+      const close = kind === 'board-close', z = close ? 0.42 : 0.15, cx = close ? 520 : 800, cy = close ? 560 : 500;
+      c.save(); c.translate(w / 2, h / 2); c.scale(z, z); c.translate(-cx, -cy);
+      if (STATIC) c.drawImage(STATIC, 0, 0, W, H);
+      c.restore();
+      prevBoat(c, w / 2 + (close ? 0 : (520 - 800) * z), h / 2 + (close ? 0 : (560 - 500) * z), Math.PI / 2 + Math.sin(t) * 0.3, close ? 0.9 : 0.32, t);
+    }
+  });
+  setupAnim = requestAnimationFrame(drawSetupPreviews);
+}
 
 </script>
 <script>if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));</script>
