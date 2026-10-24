@@ -1,5 +1,5 @@
 // Quack Harbor service worker. Bump CACHE on every release.
-const CACHE = 'quack-harbor-v1.0';
+const CACHE = 'quack-harbor-v1.1';
 const FONTS = 'quack-harbor-fonts';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
@@ -10,9 +10,13 @@ self.addEventListener('fetch', e => {
   const req = e.request; if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin === location.origin) {
-    if (req.mode === 'navigate') {
-      // online: always the newest version; offline: the saved copy
-      e.respondWith(fetch(req).then(r => { const copy = r.clone(); caches.open(CACHE).then(c => c.put('index.html', copy)); return r; }).catch(() => caches.match('index.html')));
+    if (req.mode === 'navigate' || url.pathname.endsWith('/art/art.json')) {
+      // online: always the newest page and art list; offline: the saved copy
+      const key = req.mode === 'navigate' ? 'index.html' : req;
+      e.respondWith(fetch(req).then(r => { if (r.ok) { const copy = r.clone(); caches.open(CACHE).then(c => c.put(key, copy)); } return r; }).catch(() => caches.match(key)));
+    } else if (url.pathname.includes('/art/')) {
+      // custom art: show the saved copy right away, refresh it in the background
+      e.respondWith(caches.open(CACHE).then(async c => { const hit = await c.match(req); const net = fetch(req).then(r => { if (r.ok) c.put(req, r.clone()); return r; }).catch(() => hit || Response.error()); return hit || net; }));
     } else e.respondWith(caches.match(req).then(hit => hit || fetch(req)));
     return;
   }
