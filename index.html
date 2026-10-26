@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#1fb0d3">
-<meta name="app-version" content="1.2">
+<meta name="app-version" content="1.3">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -441,6 +441,13 @@ body.gutters .act-super{position:fixed;left:max(12px,calc(env(safe-area-inset-le
   .cap-grid .avatar.lg{width:96px;height:96px;font-size:44px;}
 }
 @media (max-height:520px) and (min-aspect-ratio:1/1){.cap-grid{grid-template-columns:auto minmax(0,1fr);align-items:center;}}
+.bonus-btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;border:0;border-radius:14px;background:rgba(255,255,255,.92);color:var(--ink);font-family:var(--f-display);font-size:18px;padding:9px 10px;box-shadow:inset 0 -3px 0 rgba(0,0,0,.12);}
+.bonus-btn .ic{width:20px;height:20px;color:var(--gold-d);}
+.bonus-btn em{font-style:normal;font-family:var(--f-body);font-weight:900;font-size:12px;color:#fff;background:var(--leaf);border-radius:999px;padding:2px 8px;}
+.pirate-card canvas{width:100%;height:auto;border-radius:16px;display:block;}
+.pirate-card .btn{font-size:24px;}
+#bonus-sub{margin:0;color:var(--muted);font-size:18px;text-align:center;}
+#scr-bonus .card{gap:14px;}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;}}
 </style>
 </head>
@@ -478,7 +485,7 @@ body.gutters .act-super{position:fixed;left:max(12px,calc(env(safe-area-inset-le
     <div class="logo" aria-label="Quack Harbor"><span class="l1">Quack</span><span class="l2">Harbor</span></div>
     <p class="tag">Who's sailing today?</p>
     <div class="players" id="players-list"></div>
-    <p class="ver">Quack Harbor v1.2</p>
+    <p class="ver">Quack Harbor v1.3</p>
   </div>
 </section>
 
@@ -535,6 +542,14 @@ body.gutters .act-super{position:fixed;left:max(12px,calc(env(safe-area-inset-le
   </div>
 </section>
 
+<section class="screen" id="scr-bonus" hidden>
+  <div class="card">
+    <h2 id="bonus-title">Bonus clear!</h2>
+    <p id="bonus-sub"></p>
+    <div class="rewards" id="bonus-rewards"></div>
+    <button class="btn big go" id="btn-bonus-next">Continue</button>
+  </div>
+</section>
 <section class="screen" id="scr-setup" hidden>
   <div class="card wide">
     <div class="setup-dots" id="setup-dots"></div>
@@ -1456,6 +1471,45 @@ Object.assign(SFX, {
 });
 const ICON_BG = { heart: '#ffe0e8', wind: '#ffe0e8', lucky: '#fff0c2', headstart: '#fff0c2', combo: '#ffe3f1' };
 UPGRADES.forEach(u => { if (ICON_BG[u.id]) u.col = ICON_BG[u.id]; });
+/* =====================================================================
+   v1.3 CONFIG — cranky bosses, bonus stages and the pirate finale
+   ===================================================================== */
+SONGS.pirate = { bpm: 136, root: 50, prog: [[0, 'm'], [5, 'm'], [-2, 'M'], [7, 'M']], lead: 'square', bass: 'triangle', seed: 33, hat: true, quiet: 0.55 };
+SONGS.bonus = { bpm: 164, root: 64, prog: [[0, 'M'], [5, 'M'], [7, 'M'], [5, 'M']], lead: 'square', bass: 'triangle', seed: 41, hat: true, bell: true, quiet: 0.6 };
+
+Object.assign(SFX, {
+  hiya() { Sound.tone(420, 0.16, { type: 'sawtooth', to: 980, filter: 1800, q: 5, vol: 0.22 }); Sound.noise(0.1, { type: 'highpass', freq: 2600, vol: 0.12 }); },
+  crunch() { Sound.noise(0.2, { type: 'bandpass', freq: 1900, to: 500, vol: 0.32 }); Sound.tone(150, 0.12, { type: 'square', to: 80, vol: 0.12 }); },
+  clank() { Sound.tone(1250, 0.07, { type: 'square', vol: 0.07 }); Sound.noise(0.07, { type: 'highpass', freq: 3000, vol: 0.12 }); },
+  toss() { Sound.noise(0.32, { type: 'bandpass', freq: 500, to: 2200, vol: 0.2 }); },
+  saved() { [784, 1047, 1319, 1568].forEach((f, i) => Sound.tone(f, 0.14, { type: 'triangle', vol: 0.16, delay: i * 0.06 })); },
+  pop() { Sound.noise(0.08, { type: 'highpass', freq: 1800, vol: 0.38 }); Sound.tone(900, 0.06, { to: 240, vol: 0.14 }); },
+  flip() { Sound.noise(0.06, { type: 'bandpass', freq: 3200, vol: 0.16 }); Sound.tone(620, 0.05, { type: 'triangle', vol: 0.08 }); },
+  match() { Sound.tone(880, 0.12, { type: 'triangle', vol: 0.2 }); Sound.tone(1320, 0.22, { type: 'triangle', vol: 0.2, delay: 0.1 }); },
+  miss() { Sound.tone(330, 0.16, { type: 'square', vol: 0.06 }); Sound.tone(247, 0.24, { type: 'square', vol: 0.06, delay: 0.14 }); },
+  cannon() { Sound.noise(0.7, { freq: 700, to: 60, vol: 0.5 }); Sound.tone(95, 0.45, { type: 'sine', to: 38, vol: 0.45 }); },
+  whistle() { Sound.tone(1700, 0.75, { type: 'sine', to: 520, vol: 0.05 }); },
+  arr() { Sound.tone(160, 0.55, { type: 'sawtooth', to: 105, filter: 700, q: 6, vol: 0.26 }); },
+  squawk() { Sound.tone(1150, 0.16, { type: 'sawtooth', to: 700, filter: 2400, q: 5, vol: 0.18 }); Sound.tone(1250, 0.2, { type: 'sawtooth', to: 650, filter: 2400, q: 5, vol: 0.18, delay: 0.2 }); },
+  fanfare() { [523, 659, 784, 1047, 784, 1047].forEach((f, i) => Sound.tone(f, i === 5 ? 0.5 : 0.14, { type: 'square', vol: 0.09, delay: i * 0.11 })); },
+  tick() { Sound.tone(1500, 0.04, { type: 'square', vol: 0.05 }); },
+  rage() { Sound.tone(110, 0.6, { type: 'sawtooth', to: 70, filter: 500, q: 8, vol: 0.3 }); Sound.noise(0.4, { freq: 400, to: 150, vol: 0.18 }); },
+  bonk() { Sound.tone(520, 0.12, { type: 'triangle', to: 260, vol: 0.25 }); Sound.noise(0.15, { freq: 1200, to: 300, vol: 0.2 }); },
+});
+
+/* ---------- bonus stages: one after each boss, NES-style ---------- */
+const BONUS_FOR = { harbor: 'barnacle', swamp: 'rescue', candy: 'balloons', frosty: 'match' };
+const BONUS_INFO = {
+  barnacle: { name: 'Barnacle Bash', tip: 'Big Bubba crusted up your boat! Tap the barnacles and Kung-Fu Duck will kick them off.' },
+  rescue: { name: 'Ring Toss Rescue', tip: 'The Gator King bonked some ducks. Tap a duck to toss it a safety ring!' },
+  balloons: { name: 'Balloon Bonanza', tip: 'Gummy Octo let the party balloons go! Pop them before they float away.' },
+  match: { name: 'Snow Match', tip: 'Flip two ice cards at a time. Find all the pairs!' },
+};
+
+/* ---------- pirate finale prizes (can't be bought, only won) ---------- */
+SKINS.push({ id: 'galleon', name: 'Pirate Galleon', cost: { prize: 'pirates' }, hull: '#7a4524', dark: '#4a2810', rim: '#ffd447', pat: 'wood' });
+HATS.push({ id: 'admiral', name: "Admiral's Hat", cost: { prize: 'pirates' } });
+TWISTS.pirates = { name: 'Pirate Attack!' };
 /* =====================================================================
    WORLD — a 1600 x 1000 board with a shore along the top. Each island
    has a house; ducks waddle along a path to the end of the jetty,
@@ -2975,6 +3029,282 @@ genLayout = function (L) {
   }
   return best ? (LAYOUTS[L] = best) : _genLayoutRandom(L);
 };
+/* =====================================================================
+   v1.3 CRANKY BOSSES — the sleepier they get, the crankier they act.
+   Faster attacks, combos, a themed barrage, and hits that cost a duck.
+   ===================================================================== */
+const _levelParamsV13 = levelParams;
+levelParams = function (L, mode) {
+  const P = _levelParamsV13(L, mode);
+  if (!isBossLevel(L)) return P;
+  const loops = Math.min(3, Math.floor((L - 1) / (LEVELS_PER_WORLD * WORLDS.length)));
+  if (mode === 'little') Object.assign(P, { bossCd: 3.9, goal: 3 });
+  else if (mode === 'grown') Object.assign(P, { bossCd: 1.5, bossTele: 0.78, goal: 10 + loops });
+  else Object.assign(P, { bossCd: 2.3, bossTele: 1.12, goal: 7 + loops });
+  P.bossCd *= Math.pow(0.9, loops); P.bossTele = Math.max(0.62, P.bossTele - 0.05 * loops);
+  return P;
+};
+const bossPhase = () => { if (!G || !G.boss) return 1; const k = G.delivered / G.P.goal; return k >= 0.66 ? 3 : k >= 0.33 ? 2 : 1; };
+const bossCdNow = () => G.P.bossCd * [1, 0.85, 0.7][bossPhase() - 1];
+const CHAIN = { little: [1, 1, 1], big: [1, 2, 2], grown: [1, 2, 3] };
+const ATTACK_STATES = new Set(['leap', 'dash', 'slam', 'sneeze']);
+const BARRAGE = {
+  hippo: { shout: 'Melon party!', col: ['#ff5a6e', '#3fae4a', '#1f6b2a', '#fff'] },
+  gator: { shout: 'Coconut storm!', col: ['#7a4a26', '#fff6e8', '#5a3418'] },
+  octo: { shout: 'Gumball rain!', col: ['#ff7ac0', '#7fd8ff', '#ffe14d', '#9b7bff'] },
+  walrus: { shout: 'Snowball fight!', col: ['#ffffff', '#dff4ff', '#bfe4ff'] },
+  cannon: { shout: 'Fire!', col: ['#8a8f99', '#c9ced6', '#ffffff', '#ffb347'] },
+};
+
+const _bossAttackV13 = bossAttack;
+bossAttack = function (B) {
+  if (B.follow) { B.follow = false; B.fast = true; return _bossAttackV13(B); }
+  B.fast = false;
+  const ph = bossPhase(), loops = Math.floor((G.L - 1) / (LEVELS_PER_WORLD * WORLDS.length));
+  B.chainLeft = Math.min(3, CHAIN[G.mode][ph - 1] + (loops && G.mode !== 'little' ? 1 : 0)) - 1;
+  B.n = (B.n || 0) + 1;
+  const every = G.mode === 'little' ? 4 : ph >= 3 ? 2 : 3;
+  if (B.n % every === 0 && (ph >= 2 || G.mode === 'grown')) { B.chainLeft = 0; return startBarrage(B); }
+  return _bossAttackV13(B);
+};
+function startBarrage(B) {
+  const ph = bossPhase();
+  B.state = 'barrage'; B.t = 0; B.thrown = 0; B.aim = null; B.lane = null; B.spots = [];
+  B.toThrow = G.mode === 'little' ? 2 : G.mode === 'grown' ? 5 + ph : 3 + ph;
+  SFX.rage(); say(B.x, B.y - 130, BARRAGE[B.kind].shout, '#ffe14d', 40, 1.4); G.shake = Math.max(G.shake || 0, 6);
+}
+function bossSolid(B) {
+  const b = G.boat; if (b.jumpT > 0 || b.giantT > 0) return;
+  const d = dist(b.x, b.y, B.x, B.y), min = B.r + b.r - 6;
+  if (d < min && d > 0.1) { b.x = B.x + (b.x - B.x) / d * min; b.y = B.y + (b.y - B.y) / d * min; b.spd *= 0.5; if (b.bumpT <= 0) { b.bumpT = 0.6; SFX.bump(); } }
+}
+function updateBarrageBoss(B, dt) {
+  B.t += dt; bossSolid(B);
+  const gap = G.mode === 'grown' ? 0.11 : 0.17;
+  if (B.t > 0.6 && B.thrown < B.toThrow && B.t > 0.6 + B.thrown * gap) { throwShot(B.kind, B.x, B.y - 70, B.thrown); B.thrown++; }
+  if (B.thrown >= B.toThrow && B.t > 0.6 + B.toThrow * gap + 0.5) { B.state = 'idle'; B.t = 0; B.cd = bossCdNow() + 0.5; }
+}
+const shotOk = (x, y) => x > 70 && x < W - 70 && y > SHORE + 70 && y < H - 50 && !ISLANDS.some(I => x > I.l - 10 && x < I.r + 10 && y > I.t - 10 && y < I.b + 10) && !(G.pirates && shipHit(x, y, 30));
+/* one falling shot: aims at the boat first, then sprinkles around it */
+function throwShot(kind, sx, sy, i, o = {}) {
+  const b = G.boat, list = G.barrage, ok = shotOk;
+  let x = o.x, y = o.y;
+  if (x === undefined) {
+    if (i === 0) { x = b.x + (b.vx || 0) * 0.45; y = b.y + (b.vy || 0) * 0.45; }
+    else for (let k = 0; k < 40; k++) {
+      const a = rand(0, 7), r = rand(90, 270), px = b.x + Math.cos(a) * r, py = b.y + Math.sin(a) * r;
+      if (ok(px, py) && list.every(p => dist(p.x, p.y, px, py) > 95)) { x = px; y = py; break; }
+    }
+    if (x === undefined) { x = b.x + rand(-200, 200); y = b.y + rand(-150, 150); }
+    x = clamp(x, 70, W - 70); y = clamp(y, SHORE + 70, H - 50);
+  }
+  const fall = o.fall || (G.mode === 'little' ? 1.7 : G.mode === 'grown' ? 1.05 : 1.3);
+  list.push({ x, y, sx, sy, t: -(o.delay || 0), dur: fall, kind, r: o.r || 54, spin: rand(0, 6), hue: randi(0, 3) });
+  if (i === 0 && !o.quiet) SFX.whistle();
+}
+function updateBarrage(dt) {
+  if (!G.barrage.length) return;
+  if (G.won) { G.barrage = []; return; }
+  if (G.freezeT > 0) return;
+  for (const p of G.barrage) { p.t += dt; if (p.t >= p.dur && !p.hit) { p.hit = true; shotLands(p); } }
+  G.barrage = G.barrage.filter(p => !p.hit);
+}
+function shotLands(p) {
+  const b = G.boat, d = dist(b.x, b.y, p.x, p.y), col = BARRAGE[p.kind].col;
+  SFX.slam(); burst(p.x, p.y, p.r > 70 ? 30 : 18, { col: ['#fff', '#bdf3ff', ...col], min: 70, max: p.r > 70 ? 330 : 240, size: [4, 9] });
+  burst(p.x, p.y, 8, { col, type: 'petal', min: 60, max: 180, g: 200 }); ring(p.x, p.y, 'rgba(255,255,255,.9)', 0.6, p.r * 1.6);
+  G.shake = Math.max(G.shake || 0, p.r > 70 ? 12 : 5);
+  if (d < p.r + b.r * 0.45 && b.jumpT <= 0 && b.invT <= 0) hitBoat();
+  else if (G.t - (G.shotSayT || -9) > 0.7 && d < p.r + 70 && b.jumpT > 0) { G.shotSayT = G.t; say(b.x, b.y - 80, 'Big hop!', '#3fc46a', 34); addCoins(b.x, b.y, ECON.hop); }
+  else if (G.t - (G.shotSayT || -9) > 0.7 && d < p.r + 45 && b.invT <= 0) { G.shotSayT = G.t; say(b.x, b.y - 70, 'Dodged!', '#fff', 28); addCoins(b.x, b.y, ECON.dodge); }
+}
+
+const _updateBossV13 = updateBoss;
+updateBoss = function (dt) {
+  const B = G.boss; if (!B) return;
+  if (B.state === 'barrage') { if (!(B.dizzyT > 0)) return updateBarrageBoss(B, dt); B.state = 'idle'; B.t = 0; }
+  if (B.state === 'yawn') B.t += dt * 0.6;              // cranky bosses don't nap mid-fight
+  if (B.state === 'tele' && B.fast) B.t += dt * 0.3;    // follow-up attacks wind up quicker
+  const before = B.state;
+  _updateBossV13(dt);
+  if (B.dizzyT > 0) { B.chainLeft = 0; B.follow = false; return; }
+  if (before === 'yawn' && B.state === 'idle') {
+    B.cd = G.mode === 'little' ? 1.6 : 0.7;
+    const ph = bossPhase();
+    if (ph > (B.phase || 1)) {
+      B.phase = ph; SFX.rage(); G.shake = Math.max(G.shake || 0, 10); G.flash = 0.25;
+      say(B.x, B.y - 140, ph === 3 ? 'SUPER CRANKY!' : 'Cranky!', '#ff8a7a', ph === 3 ? 50 : 42, 1.6);
+    } else if (G.mode !== 'little') say(B.x, B.y - 120, pick(['Grr!', 'Not sleepy!', 'Hmph!', 'No nap!']), '#ffd0c8', 32);
+  } else if (ATTACK_STATES.has(before) && B.state === 'idle') {
+    if (B.chainLeft > 0) { B.chainLeft--; B.follow = true; B.cd = 0.25 + rand(0, 0.2); }
+    else B.cd = bossCdNow() + rand(0, 0.6);
+  }
+};
+
+/* ---------- getting hit in a big fight costs more ---------- */
+const bigFight = () => G && !G.won && ((G.boss && G.boss.state !== 'asleep' && G.boss.state !== 'intro') || (G.pirates && !G.pirates.sinking));
+const _hitBoatV13 = hitBoat;
+hitBoat = function () {
+  const lost0 = G.lost; _hitBoatV13();
+  if (G.lost === lost0 || !bigFight() || G.mode === 'little' || G.over) return;
+  G.boat.hitT = Math.max(G.boat.hitT, 1.25);
+  scareBeachDucks(G.mode === 'grown' ? 2 : 1);
+};
+function scareBeachDucks(n) {
+  let scared = 0;
+  for (let i = 0; i < n; i++) {
+    if (G.pirates ? G.pirates.charge <= 0 : G.delivered <= 0) break;
+    const d = G.beach.pop(); if (!d) break;
+    G.delivered--; scared++;
+    if (G.pirates) G.pirates.charge--;
+    if (G.boss) G.boss.zz = Math.max(0, G.boss.zz - 1);
+    G.ducks.push({ isl: 0, state: 'swim', x: clamp(d.x, 60, W - 60), y: SHORE + 46, vx: rand(-50, 50), vy: rand(80, 120), t: -1, face: 1, gold: d.gold, pers: d.pers, seed: rand(0, 99), ph: 0 });
+    say(d.x, d.y - 30, 'Eek!', '#fff', 30); burst(d.x, SHORE + 30, 12, { col: ['#fff', '#bdf3ff'], min: 60, max: 160 }); SFX.splash();
+  }
+  if (scared) { say(G.boat.x, G.boat.y - 125, scared > 1 ? 'Ducks got scared!' : 'A duck got scared!', '#ffd6d0', 28, 1.8); SFX.quack(1.4); }
+}
+
+/* ---------- hooks ---------- */
+const _startLevelV13 = startLevel;
+startLevel = function (L) { _startLevelV13(L); G.barrage = []; };
+const _updateGameV13 = updateGame;
+updateGame = function (dt) { _updateGameV13(dt); if (G) { updateBarrage(dt); if (G.pirates) updatePirates(dt); } };
+const _winLevelV13 = winLevel;
+winLevel = function () { if (G.pirates && !G.pirates.done) return; G.barrage = []; _winLevelV13(); };
+/* =====================================================================
+   v1.3 PIRATE ATTACK — the finale after the Frosty Bay bonus.
+   Captain Squawk's ship shells the harbor. Ducks you bring home load
+   the Duck Cannon on the beach; three hits and the pirates sink.
+   ===================================================================== */
+let PIRATE_NEXT = null;
+const SHIP_X = 1360;
+const _twistOfV13 = twistOf;
+twistOf = function (L) { return PIRATE_NEXT ? 'pirates' : _twistOfV13(L); };
+function pirateLayout() {
+  return { islands: [[300, 370, 240, 160, 'left'], [760, 370, 240, 160, 'right'], [300, 690, 240, 160, 'bottom'], [760, 690, 240, 160, 'bottom']],
+    houses: WORLDS[0].houses, drift: [], current: null, rocks: [], pools: [], start: 560 };
+}
+function makePirates(afterL) {
+  const m = G.mode;
+  return { afterL, x: W + 320, y: 420, ty: 420, hp: 3, per: m === 'little' ? 2 : m === 'grown' ? 4 : 3, charge: 0, state: 'enter', t: 0, cd: 2.2, n: 0,
+    hitT: 0, sinkT: 0, sinking: false, done: false, flashT: 0, talkT: 0, cannon: { x: 118, y: 892, state: 'idle', t: 0, recoil: 0 }, duckShot: null };
+}
+const shipHit = (x, y, pad = 0) => { const S = G && G.pirates; return !!S && !S.sinking && Math.abs(x - S.x) < 150 + pad && Math.abs(y - (S.y + 10)) < 55 + pad; };
+
+const _startLevelP13 = startLevel;
+startLevel = function (L) {
+  const PN = PIRATE_NEXT; if (!PN) return _startLevelP13(L);
+  const keep = LAYOUTS[PN.base]; LAYOUTS[PN.base] = pirateLayout();
+  try { _startLevelP13(PN.base); } finally { PIRATE_NEXT = null; if (keep) LAYOUTS[PN.base] = keep; else delete LAYOUTS[PN.base]; }
+  G.L = PN.afterL; G.isBoss = false; G.world = { ...WORLDS[0], song: 'pirate' };
+  G.lurkers = []; G.P.lurkers = 0; G.P.prankChance = 0; G.P.maxDucks = Math.min(G.P.maxDucks, G.mode === 'grown' ? 4 : 3);
+  G.replay = !!(PROFILE.pirates && PROFILE.pirates.wins);
+  G.pirates = makePirates(PN.afterL); G.P.goal = G.pirates.per * 3;
+};
+function startPirates(afterL) {
+  const loop = Math.floor((afterL - 1) / (LEVELS_PER_WORLD * WORLDS.length));
+  PIRATE_NEXT = { afterL, base: (loop + 1) * LEVELS_PER_WORLD * WORLDS.length + 7 };
+  startGame(afterL);
+  $('banner-title').textContent = 'Pirate Attack!';
+  $('banner-sub').textContent = `Captain Squawk wants the harbor! Bring ducks home to load the Duck Cannon. ${G.pirates.per} ducks = 1 shot!`;
+  const bc = $('banner-boss'); bc.hidden = false;
+  const c = bc.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, bc.width, bc.height);
+  const k = Math.min(bc.width / 380, bc.height / 330); c.setTransform(k, 0, 0, k, bc.width / 2 - 10 * k, bc.height * 0.8); drawShip(c, { x: 0, y: 0, hp: 3, hitT: 0, sinkT: 0, sinking: false, flashT: 0, talkT: 1, t: 0 }, 0, true);
+}
+
+const _deliverV13 = deliver;
+deliver = function () {
+  const d0 = G.delivered; _deliverV13();
+  if (!G.pirates) return;
+  const n = G.delivered - d0; G.pirates.charge += n;
+  if (n > 0) { const C = G.pirates.cannon; say(C.x + 30, C.y - 110, `+${n} for the Duck Cannon`, '#ffe14d', 26, 1.4); burst(C.x, C.y - 40, 10, { type: 'spark', col: ['#ffe14d', '#fff'], min: 40, max: 140 }); }
+};
+const _waterPointV13 = waterPoint;
+waterPoint = function (m, a, r) {
+  for (let i = 0; i < 14; i++) { const p = _waterPointV13(m, a, r); if (!shipHit(p.x, p.y, (m || 40) + 30)) return p; }
+  return _waterPointV13(m, a, r);
+};
+
+function pirateSay(S, text, size = 34) { S.talkT = 1.2; say(S.x + 100, S.y - 160, text, '#fff', size, 1.4); }
+function updatePirates(dt) {
+  const S = G.pirates, b = G.boat;
+  S.t += dt; S.hitT = Math.max(0, S.hitT - dt); S.flashT = Math.max(0, S.flashT - dt); S.talkT = Math.max(0, S.talkT - dt);
+  updateDuckCannon(S, dt);
+  if (S.state === 'enter') {
+    const k = Math.min(1, S.t / 3); S.x = lerp(W + 320, SHIP_X, 1 - Math.pow(1 - k, 3));
+    if (S.t - dt <= 0.6 && S.t > 0.6) { SFX.squawk(); pirateSay(S, 'Ahoy, landlubbers!'); }
+    if (k >= 1) { S.state = 'sail'; S.t = 0; S.cd = G.mode === 'little' ? 3 : 1.6; }
+  } else if (S.state === 'sail') {
+    S.y += clamp(S.ty - S.y, -32 * dt, 32 * dt); if (Math.abs(S.ty - S.y) < 4) S.ty = rand(310, 520);
+    if (G.freezeT <= 0 && !G.won) { S.cd -= dt; if (S.cd <= 0 && b.invT <= 0 && b.hitT <= 0) pirateAttack(S); }
+  } else if (S.state === 'sink') {
+    S.sinkT += dt;
+    if (S.sinkT - dt <= 1.2 && S.sinkT > 1.2) { SFX.squawk(); say(S.x + 60, S.y - 60, "We'll be back!", '#fff', 38, 2); }
+    if (Math.random() < 0.5) burst(S.x + rand(-140, 140), S.y + rand(0, 40), 1, { type: 'bubble', col: 'rgba(255,255,255,.8)', min: 10, max: 40, up: -60 });
+    if (S.sinkT > 3.4 && !S.done) { S.done = true; winLevel(); }
+  }
+  if (!S.sinking && S.state !== 'enter' && b.jumpT <= 0 && pushOutRect(b, b.r * 0.8, S.x - 150, S.y - 45, S.x + 150, S.y + 65)) { b.spd *= 0.5; if (b.bumpT <= 0) { b.bumpT = 0.6; SFX.bump(); } }
+  const C = S.cannon, cd = dist(b.x, b.y, C.x, C.y + 22), cr = 92 + b.r * 0.7;   // the cannon's little sandbar is solid
+  if (cd < cr && cd > 0.1 && b.jumpT <= 0) { b.x = C.x + (b.x - C.x) / cd * cr; b.y = C.y + 22 + (b.y - C.y - 22) / cd * cr; b.spd *= 0.6; }
+}
+function pirateAttack(S) {
+  const ph = 4 - S.hp, m = G.mode, b = G.boat; S.n++;
+  const cds = m === 'little' ? [4.4, 4, 3.6] : m === 'grown' ? [2, 1.6, 1.25] : [2.7, 2.2, 1.75];
+  S.cd = cds[ph - 1] + rand(0, 0.6);
+  const kind = m === 'little' ? 'volley' : ph === 1 ? 'volley' : ph === 2 ? (S.n % 2 ? 'volley' : 'sweep') : ['volley', 'sweep', 'big'][S.n % 3];
+  const px = S.x - 130, py = S.y - 20;
+  S.flashT = 0.3; SFX.cannon(); G.shake = Math.max(G.shake || 0, 4);
+  burst(px, py, 14, { col: ['#fff', '#d9dde3', '#ffb347'], min: 40, max: 170 });
+  if (kind === 'volley') {
+    const n = m === 'little' ? (ph > 1 ? 2 : 1) : m === 'grown' ? 2 + ph : 1 + ph;
+    for (let i = 0; i < n; i++) throwShot('cannon', px, py, i, { delay: i * 0.16, quiet: i > 0 });
+    if (Math.random() < 0.5) pirateSay(S, pick(['Fire!', 'Cannons!', 'Arr, fire!']));
+  } else if (kind === 'sweep') {
+    const n = m === 'grown' ? 8 : 6, horiz = Math.abs(b.vx || 0) < Math.abs(b.vy || 0) ? true : Math.random() < 0.5, dir = Math.random() < 0.5 ? 1 : -1;
+    let i = 0;
+    for (let k = 0; k < n; k++) {
+      const off = (k - (n - 1) / 2) * 105 * dir, x = horiz ? b.x + off : b.x, y = horiz ? b.y : b.y + off * 0.8;
+      if (!shotOk(x, y)) continue;
+      throwShot('cannon', px, py, i, { x, y, delay: k * 0.13, quiet: i > 0 }); i++;
+    }
+    pirateSay(S, 'Sweep the harbor!');
+  } else {
+    throwShot('cannon', px, py, 0, { r: 105, fall: m === 'grown' ? 1.5 : 1.8 });
+    pirateSay(S, 'The BIG cannon!', 38);
+  }
+}
+function updateDuckCannon(S, dt) {
+  const C = S.cannon; C.recoil = Math.max(0, C.recoil - dt * 2.5);
+  if (C.state === 'idle' && S.charge >= S.per && S.state === 'sail' && !S.duckShot) { C.state = 'aim'; C.t = 0; say(C.x + 60, C.y - 70, 'Duck Cannon ready!', '#ffe14d', 30, 1.3); SFX.warn(); }
+  else if (C.state === 'aim') {
+    C.t += dt;
+    if (C.t > 1.05) {
+      C.state = 'idle'; C.recoil = 1; S.charge -= S.per;
+      S.duckShot = { sx: C.x + 62, sy: C.y - 46, t: 0, dur: 1.2 };
+      SFX.cannon(); SFX.quack(0.8); G.shake = Math.max(G.shake || 0, 8);
+      burst(C.x + 66, C.y - 50, 18, { col: ['#fff', '#d9dde3', '#ffe14d'], min: 40, max: 180 }); say(C.x + 80, C.y - 100, 'FIRE!', '#fff', 46);
+    }
+  }
+  const D = S.duckShot;
+  if (D) { D.t += dt; if (Math.random() < 0.7) { const p = duckShotPos(S, D); burst(p.x, p.y, 1, { type: 'spark', col: ['#ffe14d', '#fff'], min: 5, max: 30 }); } if (D.t >= D.dur) { S.duckShot = null; shipStruck(S); } }
+}
+function duckShotPos(S, D) {
+  const k = Math.min(1, D.t / D.dur), tx = S.x - 20, ty = S.y - 40;
+  return { x: lerp(D.sx, tx, k), y: lerp(D.sy, ty, k) - Math.sin(k * Math.PI) * 320, k };
+}
+function shipStruck(S) {
+  S.hp--; S.hitT = 1.2; SFX.bonk(); SFX.arr(); G.shake = 16; G.flash = 0.3;
+  burst(S.x - 20, S.y - 40, 30, { col: ['#ffd23f', '#fff', '#ffb347'], min: 120, max: 380, size: [5, 10] });
+  burst(S.x, S.y, 12, { type: 'petal', col: ['#8a5a2b', '#6b3f1f', '#f3e6cc'], g: 420, min: 80, max: 280 });
+  addCoins(S.x, S.y - 60, 20);
+  if (S.hp <= 0) {
+    S.state = 'sink'; S.sinking = true; S.sinkT = 0; G.barrage = []; Music.stop();
+    say(S.x, S.y - 210, 'NOOO! Me ship!', '#fff', 46, 1.6);
+  } else {
+    S.cd = 1.8;
+    say(S.x, S.y - 210, S.hp === 2 ? pick(['ARRR!', 'Blimey!', 'Me sails!']) : 'Fire EVERYTHING!', '#fff', 44, 1.5);
+  }
+}
 /* =====================================================================
    RENDERING — everything is drawn with canvas shapes, no image files.
    ===================================================================== */
@@ -4732,6 +5062,239 @@ function loadDeviceArt() {
   return ArtDB.all().then(all => { ART.device = {}; for (const [k, v] of Object.entries(all)) { const slot = k.split('.')[0]; if (ART_SLOTS[slot] && v && v.data) ART.device[k] = makeArt(slot, v, v.data); } }).catch(() => {});
 }
 /* =====================================================================
+   v1.3 ART — cranky bosses, falling shots, the pirate ship, the Duck
+   Cannon, and the Admiral's Hat
+   ===================================================================== */
+const _drawBossV13 = drawBoss;
+drawBoss = function (c, B, t) {
+  const ph = bossPhase(), awake = G && !G.won && !['asleep', 'yawn', 'intro'].includes(B.state) && !(B.dizzyT > 0);
+  if (awake && ph >= 2) {
+    const a = (ph === 3 ? 0.26 : 0.16) + 0.08 * Math.sin(t * 8);
+    const g = c.createRadialGradient(B.x, B.y + 20, 20, B.x, B.y + 20, 140); g.addColorStop(0, `rgba(255,70,50,${a})`); g.addColorStop(1, 'rgba(255,70,50,0)');
+    c.fillStyle = g; c.beginPath(); c.ellipse(B.x, B.y + 20, 150, 90, 0, 0, 7); c.fill();
+  }
+  const st = B.state; if (st === 'barrage') B.state = B.t < 0.6 ? 'tele' : 'dash';
+  try { _drawBossV13(c, B, t); } finally { B.state = st; }
+  if (!awake || ph < 2) return;
+  for (let i = 0; i < 2; i++) {
+    const k = (t * 1.3 + i * 0.5) % 1, sd = i ? 1 : -1, x = B.x + sd * (46 + k * 26), y = B.y - 118 - k * 60;
+    c.globalAlpha = (1 - k) * 0.85; c.fillStyle = '#fff'; c.beginPath(); c.arc(x, y, 9 + k * 16, 0, 7); c.arc(x + sd * 10, y + 6, 7 + k * 10, 0, 7); c.fill();
+  }
+  c.globalAlpha = 1;
+  if (ph >= 3) {   // a big cartoon anger mark
+    const x = B.x - 70, y = B.y - 120, s = 15 + Math.sin(t * 10) * 2.5;
+    c.strokeStyle = '#ff3b30'; c.lineWidth = 5; c.lineCap = 'round';
+    for (let i = 0; i < 4; i++) { c.save(); c.translate(x, y); c.rotate(i * Math.PI / 2); c.beginPath(); c.moveTo(s * 0.35, -s); c.quadraticCurveTo(s * 0.35, -s * 0.35, s, -s * 0.35); c.stroke(); c.restore(); }
+  }
+};
+
+/* ---------- falling shots: shadow + target below, the shot above ---------- */
+function shotK(p) { return clamp(p.t / p.dur, 0, 1); }
+function drawShotShadows(c, t) {
+  for (const p of G.barrage) {
+    if (p.t < 0) continue;
+    const k = shotK(p);
+    c.fillStyle = `rgba(6,40,70,${0.12 + 0.28 * k})`; c.beginPath(); c.ellipse(p.x, p.y, p.r * (0.35 + 0.65 * k), p.r * (0.35 + 0.65 * k) * 0.7, 0, 0, 7); c.fill();
+  }
+}
+function drawShotRings(c, t) {
+  for (const p of G.barrage) {
+    if (p.t < 0) continue;
+    const k = shotK(p), hot = k > 0.65, pulse = hot ? 1 + Math.sin(t * 30) * 0.05 : 1;
+    c.save(); c.translate(p.x, p.y); c.scale(1, 0.7);
+    c.strokeStyle = hot ? 'rgba(255,70,60,.95)' : 'rgba(255,255,255,.85)'; c.lineWidth = hot ? 5 : 3.5;
+    c.setLineDash([14, 10]); c.lineDashOffset = -t * 40; c.beginPath(); c.arc(0, 0, p.r * pulse, 0, 7); c.stroke(); c.setLineDash([]);
+    c.globalAlpha = 0.25 + 0.35 * k; c.fillStyle = hot ? '#ff5a4e' : '#fff'; c.beginPath(); c.arc(0, 0, p.r * k * pulse, 0, 7); c.fill();
+    c.restore(); c.globalAlpha = 1;
+  }
+}
+function drawShotBody(c, kind, x, y, s, rot, hue, big) {
+  c.save(); c.translate(x, y); c.rotate(rot); c.scale(s, s);
+  if (kind === 'hippo') {   // watermelon
+    c.fillStyle = '#3fae4a'; c.beginPath(); c.ellipse(0, 0, 26, 20, 0, 0, 7); c.fill();
+    c.strokeStyle = '#1f6b2a'; c.lineWidth = 4; [-14, -4, 6, 16].forEach(x0 => { c.beginPath(); c.moveTo(x0, -18); c.quadraticCurveTo(x0 + 5, 0, x0, 18); c.stroke(); });
+    c.fillStyle = 'rgba(255,255,255,.35)'; c.beginPath(); c.ellipse(-8, -8, 9, 5, -0.5, 0, 7); c.fill();
+  } else if (kind === 'gator') {   // coconut
+    c.fillStyle = '#7a4a26'; c.beginPath(); c.arc(0, 0, 21, 0, 7); c.fill();
+    c.strokeStyle = '#5a3418'; c.lineWidth = 2; for (let i = 0; i < 10; i++) { const a = i * 0.63; c.beginPath(); c.moveTo(Math.cos(a) * 12, Math.sin(a) * 12); c.lineTo(Math.cos(a + 0.2) * 21, Math.sin(a + 0.2) * 21); c.stroke(); }
+    c.fillStyle = '#3a200c'; [[-6, -4], [5, -4], [0, 5]].forEach(([a, b]) => { c.beginPath(); c.arc(a, b, 3.2, 0, 7); c.fill(); });
+  } else if (kind === 'octo') {   // gumball
+    c.fillStyle = ['#ff7ac0', '#7fd8ff', '#ffe14d', '#9b7bff'][hue % 4]; c.beginPath(); c.arc(0, 0, 21, 0, 7); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.75)'; c.beginPath(); c.ellipse(-7, -8, 8, 5, -0.6, 0, 7); c.fill();
+  } else if (kind === 'walrus') {   // snowball
+    c.fillStyle = '#ffffff'; c.beginPath(); c.arc(0, 0, 22, 0, 7); c.fill();
+    c.fillStyle = '#cfe8fb'; c.beginPath(); c.arc(5, 6, 15, 0, 7); c.fill(); c.fillStyle = '#fff'; c.beginPath(); c.arc(-2, -2, 15, 0, 7); c.fill();
+  } else {   // cannonball
+    const r = big ? 34 : 20;
+    c.fillStyle = '#2b2f3a'; c.beginPath(); c.arc(0, 0, r, 0, 7); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.4)'; c.beginPath(); c.ellipse(-r * 0.35, -r * 0.4, r * 0.35, r * 0.2, -0.6, 0, 7); c.fill();
+  }
+  c.restore();
+}
+function drawShotsAir(c, t) {
+  for (const p of G.barrage) {
+    if (p.t < 0) continue;
+    const k = shotK(p), h = 220 + dist(p.sx, p.sy, p.x, p.y) * 0.25;
+    const x = lerp(p.sx, p.x, k), y = lerp(p.sy, p.y, k) - Math.sin(k * Math.PI) * h;
+    drawShotBody(c, p.kind, x, y, 1 + 0.45 * Math.sin(k * Math.PI), p.spin + p.t * 6, p.hue, p.r > 70);
+  }
+}
+
+/* ---------- the pirate ship ---------- */
+function drawFishBones(c, x, y, s, col) {
+  c.save(); c.translate(x, y); c.scale(s, s); c.strokeStyle = col; c.fillStyle = col; c.lineWidth = 3.2; c.lineCap = 'round';
+  c.beginPath(); c.arc(-15, 0, 7.5, 0, 7); c.fill();
+  c.beginPath(); c.moveTo(-8, 0); c.lineTo(14, 0); c.stroke();
+  [-2, 4, 10].forEach(x0 => { c.beginPath(); c.moveTo(x0, -7); c.lineTo(x0, 7); c.stroke(); });
+  c.beginPath(); c.moveTo(14, 0); c.lineTo(22, -7); c.lineTo(22, 7); c.closePath(); c.fill();
+  c.fillStyle = col === '#fff' ? '#2b2f3a' : '#fff'; c.beginPath(); c.arc(-17, -2, 2, 0, 7); c.fill();
+  c.restore();
+}
+function drawGull(c, x, y, s, t, o = {}) {
+  c.save(); c.translate(x, y); c.scale(s * (o.face || 1), s);
+  const talk = o.talk ? Math.abs(Math.sin(t * 18)) : 0;
+  c.fillStyle = '#f4f6f8'; c.beginPath(); c.ellipse(0, 0, 22, 26, 0, 0, 7); c.fill();
+  c.fillStyle = '#9aa7b4'; c.beginPath(); c.ellipse(9, 2, 13, 19, 0.3 + (o.flap ? Math.sin(t * 14) * 0.4 : 0), 0, 7); c.fill();
+  c.fillStyle = '#fff'; c.beginPath(); c.arc(-6, -30, 16, 0, 7); c.fill();
+  c.fillStyle = '#ffb02e'; c.beginPath(); c.moveTo(-18, -33); c.lineTo(-36, -30 + talk * 2); c.lineTo(-18, -27); c.fill();
+  if (talk > 0.1) { c.beginPath(); c.moveTo(-18, -26); c.lineTo(-33, -22 + talk * 6); c.lineTo(-18, -22); c.fill(); }
+  c.fillStyle = '#1d2433'; c.beginPath(); c.arc(-9, -34, 3, 0, 7); c.fill();
+  if (o.patch) { c.fillStyle = '#1d2433'; c.beginPath(); c.ellipse(1, -33, 5, 6, 0, 0, 7); c.fill(); c.strokeStyle = '#1d2433'; c.lineWidth = 2; c.beginPath(); c.moveTo(-20, -40); c.lineTo(10, -28); c.stroke(); }
+  if (o.hat) {
+    c.fillStyle = '#1d2433'; c.beginPath(); c.moveTo(-26, -42); c.quadraticCurveTo(-6, -66, 14, -42); c.quadraticCurveTo(-6, -48, -26, -42); c.fill();
+    c.strokeStyle = '#ffc531'; c.lineWidth = 2; c.stroke(); drawFishBones(c, -6, -50, 0.33, '#fff');
+  }
+  if (o.bandana) { c.fillStyle = '#ff5a4e'; c.beginPath(); c.arc(-6, -36, 16, Math.PI * 1.05, Math.PI * 1.95); c.fill(); }
+  c.restore();
+}
+function drawShip(c, S, t, mini) {
+  const sink = S.sinking ? S.sinkT : 0, hit = S.hitT || 0, hp = S.hp;
+  c.save();
+  c.translate(S.x + (hit > 0 ? Math.sin(t * 60) * hit * 7 : 0), S.y + Math.sin(t * 1.6) * 4 + sink * 40);
+  c.rotate(Math.sin(t * 1.2) * 0.025 + (S.sinking ? Math.min(0.42, sink * 0.15) : 0));
+  if (S.sinking) c.globalAlpha = Math.max(0, 1 - sink / 3.4);
+  if (!mini) { c.fillStyle = 'rgba(6,50,80,.25)'; c.beginPath(); c.ellipse(0, 54, 180, 34, 0, 0, 7); c.fill(); c.strokeStyle = 'rgba(255,255,255,.65)'; c.lineWidth = 4; c.beginPath(); c.ellipse(0, 50, 186 + Math.sin(t * 3) * 6, 30, 0, 0, 7); c.stroke(); }
+  // masts and sails
+  const mainTop = hp <= 1 ? -185 : -232;
+  c.fillStyle = '#6b3f1f'; c.fillRect(-25, mainTop, 9, -32 - mainTop); c.fillRect(-114, -192, 8, 160);
+  const sail = (pts, col) => { c.fillStyle = col; c.beginPath(); c.moveTo(pts[0], pts[1]); c.quadraticCurveTo(pts[2], pts[3], pts[4], pts[5]); c.lineTo(pts[6], pts[7]); c.quadraticCurveTo(pts[8], pts[9], pts[10], pts[11]); c.closePath(); c.fill(); c.strokeStyle = '#d4c19c'; c.lineWidth = 3; c.stroke(); };
+  const puff = Math.sin(t * 2) * 4;
+  if (hp > 1) sail([-74, -212, -20, -196 - puff, 36, -212, 42, -100, -20, -76 - puff, -82, -100], '#f7efe0');
+  else { sail([-74, -170, -20, -160, 36, -170, 42, -100, -20, -80, -82, -100], '#f1e6cf'); c.fillStyle = '#6b3f1f'; c.save(); c.translate(-20, -185); c.rotate(-0.9); c.fillRect(-4, -46, 8, 46); c.restore(); }
+  sail([-66, -238, -20, -230 - puff * 0.5, 26, -238, 28, -218, -20, -210, -68, -218], '#f7efe0');
+  if (hp <= 1) { c.fillStyle = '#f7efe0'; c.save(); c.translate(-20, -232); c.rotate(-0.9); c.fillRect(-36, -12, 60, 16); c.restore(); }
+  drawFishBones(c, -18, hp > 1 ? -150 : -128, 1.25, '#2b2f3a');
+  c.fillStyle = '#f7efe0'; c.beginPath(); c.moveTo(-116, -186); c.lineTo(-116, -62); c.quadraticCurveTo(-160, -70 - puff, -196, -46); c.closePath(); c.fill(); c.strokeStyle = '#d4c19c'; c.lineWidth = 3; c.stroke();
+  if (hp <= 2) {   // patched sail
+    c.fillStyle = '#e0b878'; c.fillRect(6, -132, 26, 22); c.strokeStyle = '#8a5a2b'; c.lineWidth = 2; c.setLineDash([4, 3]); c.strokeRect(6, -132, 26, 22); c.setLineDash([]);
+  }
+  // flag
+  const fy = (hp > 1 ? -232 : -185) - 4;
+  c.fillStyle = '#6b3f1f'; c.fillRect(-22, fy - 46, 4, 46);
+  c.fillStyle = '#1d2433'; c.beginPath(); c.moveTo(-18, fy - 46);
+  for (let i = 0; i <= 6; i++) c.lineTo(-18 + i * 9, fy - 46 + Math.sin(t * 6 + i * 0.8) * 3);
+  for (let i = 6; i >= 0; i--) c.lineTo(-18 + i * 9, fy - 18 + Math.sin(t * 6 + i * 0.8) * 3);
+  c.closePath(); c.fill(); drawFishBones(c, 9, fy - 32, 0.55, '#fff');
+  // hull
+  c.save();
+  c.beginPath(); c.moveTo(-182, -26); c.quadraticCurveTo(-150, 40, -100, 56); c.lineTo(112, 56); c.quadraticCurveTo(152, 50, 162, -8); c.lineTo(168, -66); c.lineTo(96, -66); c.lineTo(92, -36); c.lineTo(-150, -36); c.closePath();
+  const g = c.createLinearGradient(0, -66, 0, 56); g.addColorStop(0, '#b0733f'); g.addColorStop(1, '#5e3519'); c.fillStyle = g; c.fill();
+  c.save(); c.clip(); c.strokeStyle = 'rgba(60,30,10,.45)'; c.lineWidth = 2.5; [-14, 6, 26, 44].forEach(y => { c.beginPath(); c.moveTo(-190, y); c.lineTo(180, y); c.stroke(); });
+  c.fillStyle = '#c0392b'; c.fillRect(-190, -26, 380, 10); c.restore();
+  c.strokeStyle = '#ffc531'; c.lineWidth = 4; c.beginPath(); c.moveTo(-182, -26); c.lineTo(-150, -36); c.lineTo(92, -36); c.lineTo(96, -66); c.lineTo(168, -66); c.stroke();
+  c.restore();
+  c.fillStyle = '#ffe9a8'; [[118, -50], [140, -50]].forEach(([x, y]) => { rr(c, x, y, 14, 12, 3); c.fill(); });
+  [[-96, 8], [-36, 10], [24, 10]].forEach(([x, y], i) => {
+    c.fillStyle = '#2a1608'; c.beginPath(); c.arc(x, y, 12, 0, 7); c.fill();
+    c.fillStyle = '#3a3f4a'; c.beginPath(); c.arc(x - 3, y + 1, 8, 0, 7); c.fill(); c.fillStyle = '#111'; c.beginPath(); c.arc(x - 4, y + 1, 4.5, 0, 7); c.fill();
+    if (S.flashT > 0) { c.globalAlpha = Math.min(1, S.flashT * 4) * (S.sinking ? 0 : 1); c.fillStyle = '#ffb347'; c.beginPath(); c.arc(x - 14, y, 16, 0, 7); c.fill(); c.fillStyle = '#fff'; c.beginPath(); c.arc(x - 14, y, 8, 0, 7); c.fill(); c.globalAlpha = S.sinking ? Math.max(0, 1 - sink / 3.4) : 1; }
+  });
+  // crew
+  drawGull(c, -128, -52, 0.62, t + 1, { bandana: true });
+  c.fillStyle = '#8a5a2b'; c.save(); c.translate(-150, -66); c.rotate(-0.25); rr(c, -22, -4, 26, 8, 3); c.fill(); c.restore();
+  drawGull(c, 128, -96, 1, t, { hat: true, patch: true, talk: S.talkT > 0 || S.flashT > 0 || hit > 0, flap: hit > 0 });
+  // smoke from damage
+  if (hp <= 2 && !mini) for (let i = 0; i < (hp <= 1 ? 3 : 2); i++) {
+    const k = (t * 0.5 + i / 3) % 1; c.globalAlpha = (1 - k) * 0.5 * (S.sinking ? Math.max(0, 1 - sink / 3.4) : 1);
+    c.fillStyle = hp <= 1 ? '#6b6f78' : '#a9aeb7'; c.beginPath(); c.arc(-60 + i * 40 + k * 20, -60 - k * 120, 14 + k * 22, 0, 7); c.fill();
+  }
+  c.restore(); c.globalAlpha = 1;
+  if (hit > 0.6 && !mini) dizzyStars(c, S.x + 120, S.y - 170, 30, t);
+  if (!mini && !S.sinking && S.state !== 'enter') {
+    c.fillStyle = 'rgba(20,59,82,.45)'; rr(c, S.x - 66, S.y + 84, 132, 36, 18); c.fill();
+    for (let i = 0; i < 3; i++) { c.fillStyle = i < hp ? '#ff4d6d' : 'rgba(255,255,255,.45)'; drawHeartShape(c, S.x - 36 + i * 36, S.y + 104 + Math.sin(t * 3 + i) * 2, 14); }
+  }
+  if (S.sinking) {   // the crew rows away, shaking a fist
+    const k = sink, rx = S.x + 40 + k * 150, ry = S.y + 120;
+    c.save(); c.translate(rx, ry + Math.sin(t * 4) * 3);
+    c.fillStyle = '#8a5a2b'; c.beginPath(); c.moveTo(-50, -8); c.quadraticCurveTo(0, 26, 50, -8); c.closePath(); c.fill();
+    c.strokeStyle = '#6b3f1f'; c.lineWidth = 4; c.beginPath(); c.moveTo(-10, 0); c.lineTo(-40 + Math.sin(t * 8) * 10, 22); c.moveTo(10, 0); c.lineTo(40 - Math.sin(t * 8) * 10, 22); c.stroke();
+    c.restore();
+    drawGull(c, rx + 8, ry - 22, 0.7, t, { hat: true, patch: true, talk: true, flap: true });
+    drawGull(c, rx - 26, ry - 16, 0.5, t + 2, { bandana: true });
+  }
+}
+function drawDuckCannon(c, S, t) {
+  const C = S.cannon, x = C.x, y = C.y, rec = C.recoil * 14, aim = C.state === 'aim';
+  c.strokeStyle = 'rgba(255,255,255,.7)'; c.lineWidth = 5; c.beginPath(); c.ellipse(x, y + 24, 104 + Math.sin(t * 3) * 4, 62, 0, 0, 7); c.stroke();
+  c.fillStyle = '#f5c56a'; c.beginPath(); c.ellipse(x, y + 26, 96, 56, 0, 0, 7); c.fill(); c.fillStyle = '#ffe3a3'; c.beginPath(); c.ellipse(x - 6, y + 18, 86, 46, 0, 0, 7); c.fill();
+  c.save(); c.translate(x, y);
+  c.fillStyle = 'rgba(80,50,20,.25)'; c.beginPath(); c.ellipse(4, 30, 62, 12, 0, 0, 7); c.fill();
+  c.save(); c.rotate(-0.55); c.translate(-rec, 0);
+  if (aim) { const k = Math.min(1, C.t / 0.5); drawDuck(c, 66 + k * 10, -2, 1.05, 1, t * 6, { mood: 'happy', t }); }
+  const g = c.createLinearGradient(0, -24, 0, 24); g.addColorStop(0, '#6fb0ff'); g.addColorStop(1, '#2763c4');
+  c.fillStyle = g; rr(c, -18, -22, 98, 44, 20); c.fill();
+  c.fillStyle = '#2763c4'; rr(c, 66, -26, 22, 52, 10); c.fill();
+  c.fillStyle = '#ffc531'; [8, 40].forEach(bx => { c.fillRect(bx, -22, 7, 44); });
+  c.fillStyle = '#fff'; drawStar4(c, 26, 0, 9, 0);
+  c.restore();
+  c.fillStyle = '#8a5a2b'; rr(c, -40, 2, 70, 22, 8); c.fill();
+  [[-26, 22], [18, 22]].forEach(([wx, wy]) => {
+    c.fillStyle = '#5e3519'; c.beginPath(); c.arc(wx, wy, 15, 0, 7); c.fill(); c.strokeStyle = '#c99a5b'; c.lineWidth = 2.5;
+    for (let i = 0; i < 4; i++) { const a = i * Math.PI / 4; c.beginPath(); c.moveTo(wx - Math.cos(a) * 12, wy - Math.sin(a) * 12); c.lineTo(wx + Math.cos(a) * 12, wy + Math.sin(a) * 12); c.stroke(); }
+  });
+  c.restore();
+  for (let i = 0; i < S.per; i++) {
+    const px = x - (S.per - 1) * 14 + i * 28, py = y + 62, on = i < Math.min(S.per, S.charge);
+    if (on) drawDuck(c, px, py, 0.42, 1, 0, { mood: 'happy', t });
+    else { c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 3; c.setLineDash([4, 4]); c.beginPath(); c.arc(px, py - 4, 10, 0, 7); c.stroke(); c.setLineDash([]); }
+  }
+  if (aim && Math.sin(t * 12) > 0) { c.font = `26px ${FONT}`; c.textAlign = 'center'; c.lineWidth = 6; c.strokeStyle = 'rgba(20,59,82,.85)'; c.strokeText('READY!', x + 10, y - 78); c.fillStyle = '#ffe14d'; c.fillText('READY!', x + 10, y - 78); }
+}
+function drawDuckShot(c, S, t) {
+  const D = S.duckShot, p = duckShotPos(S, D);
+  drawDuck(c, p.x, p.y, 1.5 + Math.sin(p.k * Math.PI) * 0.5, 1, t * 10, { air: true, mood: 'happy', rot: p.k * Math.PI * 3, flap: 1, t });
+}
+
+/* ---------- hooks into the render order ---------- */
+const _drawPlayThingsV13 = drawPlayThings;
+drawPlayThings = function (c, t) {
+  _drawPlayThingsV13(c, t);
+  if (!G) return;
+  if (G.pirates) { drawDuckCannon(c, G.pirates, t); if (G.boat.y >= G.pirates.y - 20) drawShip(c, G.pirates, t); }
+  if (G.barrage && G.barrage.length) drawShotShadows(c, t);
+};
+const _drawPrankFxV13 = drawPrankFx;
+drawPrankFx = function (c, t) {
+  _drawPrankFxV13(c, t);
+  if (!G) return;
+  if (G.pirates) { if (G.boat.y < G.pirates.y - 20) drawShip(c, G.pirates, t); if (G.pirates.duckShot) drawDuckShot(c, G.pirates, t); }
+  if (G.barrage && G.barrage.length) { drawShotRings(c, t); drawShotsAir(c, t); }
+};
+
+/* ---------- Admiral's Hat (pirate prize) ---------- */
+const _drawHatV13 = drawHat;
+drawHat = function (c, id, x, y, r, t) {
+  if (id !== 'admiral') return _drawHatV13(c, id, x, y, r, t);
+  c.save(); c.translate(x, y - r - 2);
+  c.fillStyle = '#1d2a4a'; c.beginPath(); c.moveTo(-r * 1.3, r * 0.3); c.quadraticCurveTo(0, -r * 1.3, r * 1.3, r * 0.3); c.quadraticCurveTo(0, -r * 0.05, -r * 1.3, r * 0.3); c.fill();
+  c.strokeStyle = '#ffc531'; c.lineWidth = Math.max(1.5, r * 0.09); c.stroke();
+  c.fillStyle = '#fff'; c.beginPath(); c.ellipse(r * 0.42, -r * 0.72, r * 0.36, r * 0.15, -0.7 + Math.sin((t || 0) * 3) * 0.08, 0, 7); c.fill();
+  c.fillStyle = '#ffc531'; c.beginPath(); c.arc(0, -r * 0.28, r * 0.19, 0, 7); c.fill();
+  c.fillStyle = '#ff5a4e'; c.beginPath(); c.arc(0, -r * 0.28, r * 0.09, 0, 7); c.fill();
+  c.restore();
+};
+/* =====================================================================
    INPUT
    Tap-to-go (default for kids): tap or hold anywhere and the boat
    sails there. Tapping an island sails to its dock, tapping the shore
@@ -5228,12 +5791,14 @@ $('btn-music').addEventListener('click', toggleMusic); $('btn-music2').addEventL
 document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click', () => { SFX.click(); renderHome(); }));
 $('btn-pause').addEventListener('click', e => { e.stopPropagation(); Sound.init(); SFX.click(); pauseGame(); });
 $('btn-resume').addEventListener('click', () => { SFX.click(); G.paused = false; show(null); Music.play(G.isBoss ? 'boss' : G.world.song); });
-$('btn-restart').addEventListener('click', () => { SFX.click(); startGame(G.L); });
+$('btn-restart').addEventListener('click', () => { SFX.click(); restartLevel(); });
 $('btn-quit').addEventListener('click', () => { SFX.click(); leaveGame(); });
-$('btn-next').addEventListener('click', () => { SFX.click(); startGame(G.L + 1); });
+function nextFromWin() { startGame(G.L + 1); }
+function restartLevel() { startGame(G.L); }
+$('btn-next').addEventListener('click', () => { SFX.click(); nextFromWin(); });
 $('btn-win-shop').addEventListener('click', () => { SFX.click(); Music.stop(); G = null; renderShop(); });
 $('btn-win-home').addEventListener('click', () => { SFX.click(); leaveGame(); });
-$('btn-retry').addEventListener('click', () => { SFX.click(); startGame(G.L); });
+$('btn-retry').addEventListener('click', () => { SFX.click(); restartLevel(); });
 $('btn-lose-shop').addEventListener('click', () => { SFX.click(); G = null; renderShop(); });
 $('btn-lose-home').addEventListener('click', () => { SFX.click(); leaveGame(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden) { pauseGame(); persist(); Music.stop(); } });
@@ -6049,6 +6614,643 @@ function drawSetupPreviews(now) {
   });
   setupAnim = requestAnimationFrame(drawSetupPreviews);
 }
+/* =====================================================================
+   v1.3 BONUS STAGES — a short, different game after every boss.
+   Barnacle Bash (the Street Fighter II car-smash, but you're cleaning),
+   Ring Toss Rescue, Balloon Bonanza (Balloon Fight's bonus phase) and
+   Snow Match (Super Mario Bros. 3's card game). Tap-only, no fail state.
+   ===================================================================== */
+SCREENS.push('scr-bonus');
+let BONUS = null;
+const BFX = fn => { const g0 = G; G = BONUS.fx; try { return fn(); } finally { G = g0; } };
+const bonusView = () => { const { cw, ch } = VIEW, s = Math.min(cw / W, ch / H); return { s, ox: (cw - W * s) / 2, oy: (ch - H * s) / 2 }; };
+const BTIME = { barnacle: { little: 40, big: 30, grown: 26 }, rescue: { little: 42, big: 36, grown: 30 }, balloons: { little: 32, big: 30, grown: 30 }, match: { little: 90, big: 60, grown: 45 } };
+const leaveBonusHome = () => { backdrop(worldOf(PROFILE.level)); updateCamera(0, true); renderHome(); };
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+function startBonus(kind, o = {}) {
+  Sound.init(); Music.stop(); G = null;
+  const mode = PROFILE.mode;
+  BONUS = { kind, mode, L: o.L || 8, replay: !!o.replay, then: o.then || leaveBonusHome, t: 0, pt: 0, phase: 'intro', left: BTIME[kind][mode], coins: 0, gems: 0, perfect: false, endT: 0, lastSec: 99,
+    fx: { parts: [], texts: [], flyers: [], pendingCoins: 0, pendingGems: 0, partyT: 0, mode, coins: 0, gems: 0 } };
+  BONUS.time = BONUS.left;
+  BONUS_GAMES[kind].init(BONUS);
+  show(null); $('banner').hidden = true;
+  SFX.fanfare(); setTimeout(() => { if (BONUS && BONUS.kind === kind && BONUS.phase !== 'end') Music.play('bonus'); }, 900);
+}
+function bCoins(B, x, y, n) { B.coins += n; BFX(() => { say(x, y - 30, `+${n}`, '#ffe14d', 32, 0.9); burst(x, y, 6, { type: 'spark', col: ['#ffe14d', '#fff'], min: 40, max: 160 }); }); SFX.coin(); }
+function bGem(B, x, y) { if (B.replay) return bCoins(B, x, y, 6); B.gems++; BFX(() => { say(x, y - 40, '+1 gem!', '#e3c6ff', 36, 1.1); burst(x, y, 12, { type: 'spark', col: ['#d9b3ff', '#fff'], min: 60, max: 200 }); }); SFX.gem(); }
+function updateBonus(dt) {
+  const B = BONUS, Gm = BONUS_GAMES[B.kind]; B.t += dt;
+  BFX(() => updateFx(dt));
+  if (B.phase === 'intro') { if (B.t > 3) startBonusPlay(B); }
+  else if (B.phase === 'play') {
+    B.pt += dt; B.left -= dt;
+    const sec = Math.ceil(B.left); if (sec !== B.lastSec) { B.lastSec = sec; if (sec <= 5 && sec > 0) SFX.tick(); }
+    Gm.update(B, dt);
+    if (B.left <= 0 || Gm.done(B)) endBonus(B);
+  } else {
+    B.endT += dt; if (Gm.after) Gm.after(B, dt);
+    if (B.endT > 2.4 && !B.shown) { B.shown = true; showBonusResult(); }
+  }
+}
+function startBonusPlay(B) { B.phase = 'play'; B.pt = 0; SFX.warn(); if (BONUS_GAMES[B.kind].begin) BONUS_GAMES[B.kind].begin(B); }
+function endBonus(B) {
+  if (B.phase === 'end') return;
+  B.phase = 'end'; B.endT = 0; B.left = Math.max(0, B.left); Music.stop();
+  B.perfect = BONUS_GAMES[B.kind].perfect(B);
+  if (B.perfect) { SFX.fanfare(); BFX(() => { for (let i = 0; i < 4; i++) burst(300 + i * 330, 260, 30, { type: 'confetti', col: ['#ff6a55', '#ffc531', '#3fc46a', '#3f8cff', '#a66bff'], min: 120, max: 420, up: -200, g: 420, life: 2.2 }); }); }
+  else SFX.star(1);
+}
+function txt(c, s, x, y, size, fill = '#fff', stroke = 'rgba(20,59,82,.9)', lw = 8) {
+  c.font = `${size}px ${FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineJoin = 'round';
+  if (stroke) { c.lineWidth = lw; c.strokeStyle = stroke; c.strokeText(s, x, y); }
+  c.fillStyle = fill; c.fillText(s, x, y);
+}
+function wrapLines(c, text, maxW) {
+  const out = []; let line = '';
+  for (const w of text.split(' ')) { const tst = line ? line + ' ' + w : w; if (c.measureText(tst).width > maxW && line) { out.push(line); line = w; } else line = tst; }
+  if (line) out.push(line); return out;
+}
+function coinIc(c, x, y, r) { c.fillStyle = '#ffc531'; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); c.fillStyle = '#ffdc6b'; c.beginPath(); c.arc(x, y, r * 0.68, 0, 7); c.fill(); c.strokeStyle = '#d99500'; c.lineWidth = r * 0.14; c.stroke(); }
+function gemIc(c, x, y, r) {
+  c.fillStyle = '#b06bff'; c.beginPath(); c.moveTo(x - r, y - r * 0.25); c.lineTo(x - r * 0.5, y - r * 0.8); c.lineTo(x + r * 0.5, y - r * 0.8); c.lineTo(x + r, y - r * 0.25); c.lineTo(x, y + r); c.closePath(); c.fill();
+  c.fillStyle = '#dcb8ff'; c.beginPath(); c.moveTo(x - r * 0.5, y - r * 0.8); c.lineTo(x + r * 0.5, y - r * 0.8); c.lineTo(x, y - r * 0.25); c.closePath(); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.5)'; c.beginPath(); c.moveTo(x - r, y - r * 0.25); c.lineTo(x - r * 0.5, y - r * 0.8); c.lineTo(x - r * 0.25, y - r * 0.25); c.closePath(); c.fill();
+}
+function renderBonus(t) {
+  const B = BONUS, Gm = BONUS_GAMES[B.kind], v = bonusView(), { dpr, cw, ch } = VIEW;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.fillStyle = Gm.edge; ctx.fillRect(0, 0, cw, ch);
+  ctx.setTransform(dpr * v.s, 0, 0, dpr * v.s, v.ox * dpr, v.oy * dpr);
+  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
+  Gm.draw(ctx, B, t);
+  BFX(() => { drawParts(ctx); drawTexts(ctx); });
+  drawBonusHud(ctx, B, t);
+  ctx.restore();
+}
+function drawBonusHud(c, B, t) {
+  const Gm = BONUS_GAMES[B.kind];
+  c.fillStyle = 'rgba(255,255,255,.9)'; rr(c, 30, 24, 210, 66, 33); c.fill();
+  coinIc(c, 66, 57, 22); txt(c, String(B.coins), 150, 59, 40, '#143b52', null);
+  if (Gm.hud) Gm.hud(c, B, t);
+  const sec = Math.max(0, Math.ceil(B.left)), low = B.phase === 'play' && sec <= 5;
+  txt(c, 'TIME', 800, 34, 26, '#ffe14d', 'rgba(120,30,20,.9)', 7);
+  txt(c, String(sec), 800, 80, low ? 64 + Math.sin(t * 20) * 4 : 58, low ? '#ff6a55' : '#fff', 'rgba(120,30,20,.9)', 10);
+  if (B.phase === 'play') { c.fillStyle = 'rgba(255,255,255,.9)'; c.beginPath(); c.arc(1550, 58, 30, 0, 7); c.fill(); c.strokeStyle = '#5d7f93'; c.lineWidth = 6; c.lineCap = 'round'; c.beginPath(); c.moveTo(1539, 47); c.lineTo(1561, 69); c.moveTo(1561, 47); c.lineTo(1539, 69); c.stroke(); }
+  if (B.phase === 'intro') {
+    const k = Math.min(1, B.t / 0.35), info = BONUS_INFO[B.kind];
+    c.fillStyle = 'rgba(10,40,70,.55)'; c.fillRect(0, 300, W, 420);
+    c.save(); c.translate(800, 400); c.scale(0.4 + 0.6 * k + Math.sin(B.t * 6) * 0.02, 0.4 + 0.6 * k); c.transform(1, 0, -0.12, 1, 0, 0);
+    txt(c, 'BONUS STAGE', 0, 0, 120, '#ffe14d', '#c0392b', 16); c.restore();
+    txt(c, info.name, 800, 515, 60, '#fff');
+    c.font = `34px ${FONT}`; wrapLines(c, info.tip, 1100).forEach((l, i) => txt(c, l, 800, 590 + i * 42, 34, '#dff4ff', 'rgba(20,59,82,.9)', 6));
+    if (B.t > 0.9 && Math.sin(B.t * 6) > -0.3) txt(c, 'Tap to start!', 800, 680, 30, '#ffe14d', 'rgba(20,59,82,.9)', 6);
+  } else if (B.phase === 'end') {
+    const k = Math.min(1, B.endT / 0.3), word = B.perfect ? 'PERFECT!' : (Gm.endWord ? Gm.endWord(B) : 'TIME!');
+    c.save(); c.translate(800, 470); c.scale(0.5 + 0.5 * k, 0.5 + 0.5 * k); c.rotate(Math.sin(B.endT * 3) * 0.03);
+    txt(c, word, 0, 0, B.perfect ? 150 : 120, B.perfect ? `hsl(${(B.endT * 200) % 360} 95% 65%)` : '#fff', '#c0392b', 16); c.restore();
+  }
+}
+const _frameV13 = frame;
+frame = function (now) {
+  if (!BONUS) return _frameV13(now);
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.05, Math.max(0, (now - lastNow) / 1000)); lastNow = now; CLOCK += dt;
+  if (!CUR) updateBonus(dt);
+  renderBonus(CLOCK);
+};
+cv.addEventListener('pointerdown', e => {
+  if (!BONUS || CUR) return;
+  const v = bonusView(), p = { x: (e.clientX - v.ox) / v.s, y: (e.clientY - v.oy) / v.s };
+  if (BONUS.phase === 'intro') { if (BONUS.t > 0.8) startBonusPlay(BONUS); return; }
+  if (BONUS.phase !== 'play') return;
+  if (dist(p.x, p.y, 1550, 58) < 44) { endBonus(BONUS); return; }
+  BONUS_GAMES[BONUS.kind].tap(BONUS, p);
+});
+function showBonusResult() {
+  const B = BONUS, info = BONUS_INFO[B.kind], Gm = BONUS_GAMES[B.kind], mul = (B.replay ? ECON.replay : 1) * (ECON.modeMul[B.mode] || 1);
+  const extra = B.perfect ? 30 + Math.round(B.left) * 2 : 0, coins = Math.max(1, Math.round((B.coins + extra) * mul)), gems = B.gems + (B.perfect && !B.replay ? 1 : 0);
+  PROFILE.coins += coins; PROFILE.gems += gems;
+  PROFILE.bonus = PROFILE.bonus || {};
+  const rec = PROFILE.bonus[B.kind] || { plays: 0, perfect: 0, best: 0 };
+  rec.plays++; if (B.perfect) rec.perfect++; rec.best = Math.max(rec.best, B.coins); PROFILE.bonus[B.kind] = rec; persist();
+  $('bonus-title').textContent = B.perfect ? 'PERFECT!' : pick(['Bonus clear!', 'Nice one!', 'Great job!']);
+  $('bonus-sub').textContent = `${info.name} · ${Gm.summary(B)}`;
+  const rows = [['Bonus coins', Math.round(B.coins * mul), 'coin']];
+  if (extra) rows.push(['Perfect bonus', Math.round(extra * mul), 'coin']);
+  if (B.gems) rows.push(['Gems found', B.gems, 'gem']);
+  if (B.perfect && !B.replay) rows.push(['Perfect gem', 1, 'gem']);
+  if (B.replay) rows.push(['Replay', 'practice', null]);
+  $('bonus-rewards').innerHTML = rows.map(([a, n, ic]) => `<div class="reward"><span>${a}</span><span>${ic ? `+${n}${icon(ic)}` : n}</span></div>`).join('');
+  show('scr-bonus');
+}
+$('btn-bonus-next').addEventListener('click', () => { SFX.click(); const then = BONUS && BONUS.then; BONUS = null; Music.stop(); if (then) then(); });
+
+/* =====================================================================
+   1. BARNACLE BASH
+   ===================================================================== */
+const hullAt = y => { const k = clamp((y - 470) / 300, 0, 1); return { l: lerp(262, 470, k * k), r: lerp(1302, 1170, k * k) }; };
+function bashHullPath(c) { c.beginPath(); c.moveTo(232, 452); c.quadraticCurveTo(300, 742, 482, 772); c.lineTo(1160, 772); c.quadraticCurveTo(1292, 735, 1312, 462); c.lineTo(1312, 452); c.closePath(); }
+function hullFill(c, skin, y0, y1) {
+  if (skin.hull !== 'rainbow') return skin.hull;
+  const g = c.createLinearGradient(0, y0, 0, y1); ['#ff5a4e', '#ffc531', '#3fc46a', '#3f8cff', '#a66bff'].forEach((col, i) => g.addColorStop(i / 4, col)); return g;
+}
+function drawHeadband(c, x, y, s, face, t) {
+  c.save(); c.translate(x, y); c.scale(s * face, s); c.strokeStyle = '#ff3b30'; c.lineWidth = 3.4; c.lineCap = 'round';
+  c.beginPath(); c.moveTo(1.5, -16.5); c.quadraticCurveTo(9, -21, 16.5, -16.5); c.stroke();
+  c.lineWidth = 2.6; [0, 1].forEach(i => { const w = Math.sin(t * 14 + i * 1.7) * 2.5; c.beginPath(); c.moveTo(1, -17); c.quadraticCurveTo(-6, -19 + w + i * 3, -13, -15 + w * 1.4 + i * 4); c.stroke(); });
+  c.restore();
+}
+function drawBarnacle(c, it, t) {
+  const sh = it.sh > 0 ? Math.sin(t * 70) * it.sh * 18 : 0;
+  c.save(); c.translate(it.x + sh, it.y);
+  if (it.kind === 'weed') {
+    c.strokeStyle = '#2f9a4a'; c.lineCap = 'round';
+    for (let i = 0; i < 4; i++) { c.lineWidth = 7 - i; c.beginPath(); c.moveTo(-14 + i * 9, -it.r * 0.6); for (let k = 1; k <= 6; k++) c.lineTo(-14 + i * 9 + Math.sin(t * 3 + k * 0.9 + i) * 6, -it.r * 0.6 + k * it.r * 0.28); c.stroke(); }
+    c.fillStyle = '#4fbf63'; c.beginPath(); c.ellipse(0, -it.r * 0.6, 22, 9, 0, 0, 7); c.fill();
+    c.restore(); return;
+  }
+  const cone = (x, y, r) => {
+    c.fillStyle = 'rgba(60,50,30,.25)'; c.beginPath(); c.ellipse(x, y + r * 0.5, r * 1.05, r * 0.3, 0, 0, 7); c.fill();
+    c.fillStyle = '#e9e2cf'; c.strokeStyle = '#a89c80'; c.lineWidth = Math.max(2, r * 0.08);
+    c.beginPath(); c.moveTo(x - r, y + r * 0.5); c.quadraticCurveTo(x - r * 0.7, y - r * 0.5, x - r * 0.32, y - r * 0.72); c.lineTo(x + r * 0.32, y - r * 0.72); c.quadraticCurveTo(x + r * 0.7, y - r * 0.5, x + r, y + r * 0.5); c.closePath(); c.fill(); c.stroke();
+    c.strokeStyle = 'rgba(140,125,95,.6)'; [-0.5, 0, 0.5].forEach(k => { c.beginPath(); c.moveTo(x + k * r * 0.6, y - r * 0.6); c.lineTo(x + k * r * 1.3, y + r * 0.42); c.stroke(); });
+    c.fillStyle = '#6e6553'; c.beginPath(); c.ellipse(x, y - r * 0.7, r * 0.32, r * 0.13, 0, 0, 7); c.fill();
+  };
+  if (it.kind === 'small') cone(0, 0, it.r);
+  else if (it.kind === 'big') { cone(-it.r * 0.45, it.r * 0.15, it.r * 0.62); cone(it.r * 0.45, it.r * 0.2, it.r * 0.58); cone(0, -it.r * 0.15, it.r * 0.72); }
+  else {   // the King Barnacle, crown and all
+    cone(0, 0, it.r);
+    const look = BONUS ? Math.sign(BONUS.duck.x - it.x) : 0, hurt = it.sh > 0;
+    [-1, 1].forEach(s => {
+      c.fillStyle = '#fff'; c.beginPath(); c.ellipse(s * 22, -4, 14, hurt ? 4 : 16, 0, 0, 7); c.fill();
+      if (!hurt) { c.fillStyle = '#1d2433'; c.beginPath(); c.arc(s * 22 + look * 5, -1, 6.5, 0, 7); c.fill(); }
+      c.strokeStyle = '#1d2433'; c.lineWidth = 5; c.lineCap = 'round'; c.beginPath(); c.moveTo(s * 36, -26); c.lineTo(s * 10, -18); c.stroke();
+    });
+    c.strokeStyle = '#1d2433'; c.lineWidth = 4; c.beginPath(); c.arc(0, 26, 12, Math.PI + 0.4, -0.4); c.stroke();
+    c.fillStyle = '#ffc531'; c.strokeStyle = '#d99500'; c.lineWidth = 3; c.beginPath(); c.moveTo(-26, -62); c.lineTo(-26, -86); c.lineTo(-13, -72); c.lineTo(0, -92); c.lineTo(13, -72); c.lineTo(26, -86); c.lineTo(26, -62); c.closePath(); c.fill(); c.stroke();
+    c.strokeStyle = 'rgba(80,60,40,.75)'; c.lineWidth = 3;
+    for (let i = 0; i < it.max - it.hp; i++) { const a = i * 1.9; c.beginPath(); c.moveTo(Math.cos(a) * 20, Math.sin(a) * 18 + 10); c.lineTo(Math.cos(a) * 46, Math.sin(a) * 30 + 14); c.lineTo(Math.cos(a + 0.3) * 58, Math.sin(a + 0.3) * 32 + 16); c.stroke(); }
+  }
+  c.restore();
+}
+const BONUS_GAMES = {};
+BONUS_GAMES.barnacle = {
+  edge: '#ffd98a',
+  init(B) {
+    const m = B.mode, n = { little: [8, 0, 2], big: [11, 4, 3], grown: [13, 6, 4] }[m];
+    const king = { x: 790, y: 632, r: 80, hp: m === 'little' ? 5 : m === 'grown' ? 12 : 8, kind: 'king', sh: 0 }; king.max = king.hp;
+    B.items = [king];
+    const place = (kind, r, hp, yr) => {
+      for (let k = 0; k < 200; k++) {
+        const y = rand(yr[0], yr[1]), e = hullAt(y), x = rand(e.l + r + 18, e.r - r - 18);
+        if (B.items.every(o => dist(o.x, o.y, x, y) > o.r + r + 14)) { B.items.push({ x, y, r, hp, max: hp, kind, sh: 0 }); return; }
+      }
+    };
+    for (let i = 0; i < n[1]; i++) place('big', 44, m === 'grown' ? 3 : 2, [540, 720]);
+    for (let i = 0; i < n[0]; i++) place('small', 30, 1, [520, 735]);
+    for (let i = 0; i < n[2]; i++) place('weed', 30, 1, [748, 756]);
+    B.total = B.items.length; B.cleared = 0; B.shine = []; B.chunks = [];
+    B.duck = { x: 170, y: 880, sx: 170, sy: 880, tx: 170, ty: 880, st: 'idle', t: 0, face: 1 };
+  },
+  tap(B, p) {
+    const pad = B.mode === 'little' ? 55 : 32; let best = null, bd = 1e9;
+    for (const it of B.items) { const d = dist(p.x, p.y, it.x, it.y); if (d < it.r + pad && d < bd) { bd = d; best = it; } }
+    const D = B.duck, tx = best ? best.x : p.x, ty = best ? best.y : p.y;
+    D.face = tx >= D.x ? 1 : -1; D.sx = D.x; D.sy = D.y; D.tx = tx - D.face * (best ? best.r * 0.6 + 26 : 0); D.ty = ty - 6; D.st = 'dash'; D.t = 0;
+    if (!best) { BFX(() => say(p.x, p.y - 30, 'Hup!', '#fff', 26, 0.6)); SFX.spin(); return; }
+    best.hp--; best.sh = 0.25;
+    if (Math.random() < 0.45 || best.hp <= 0) SFX.hiya();
+    BFX(() => { burst(best.x, best.y, 7, { col: ['#e8e2d0', '#b9b09a', '#fff'], min: 80, max: 240, g: 500, size: [3, 7] }); if (Math.random() < 0.45) say(best.x + rand(-30, 30), best.y - best.r - 24, pick(['HI-YAH!', 'WA-POW!', 'KA-CHOP!', 'BONK!', 'HUP!']), '#fff', 30, 0.7); });
+    if (best.hp > 0) { SFX.clank(); return; }
+    SFX.crunch(); B.items.splice(B.items.indexOf(best), 1); B.cleared++;
+    for (let i = 0; i < (best.kind === 'king' ? 6 : best.kind === 'big' ? 3 : 1); i++) B.chunks.push({ x: best.x + rand(-20, 20), y: best.y, vx: rand(-320, 320), vy: rand(-620, -320), rot: 0, vr: rand(-9, 9), r: best.kind === 'weed' ? 0 : rand(10, 18), weed: best.kind === 'weed', life: 0 });
+    B.shine.push({ x: best.x, y: best.y, t: 0, r: best.r });
+    bCoins(B, best.x, best.y, { small: 2, big: 5, weed: 2, king: 25 }[best.kind]);
+    if (best.kind === 'king') { BFX(() => say(800, 420, 'KING BARNACLE DOWN!', '#ffe14d', 52, 1.6)); SFX.bonk(); }
+  },
+  update(B, dt) {
+    const D = B.duck; D.t += dt;
+    if (D.st === 'dash') { const k = Math.min(1, D.t / 0.12); D.x = lerp(D.sx, D.tx, k); D.y = lerp(D.sy, D.ty, k) - Math.sin(k * Math.PI) * 40; if (k >= 1) { D.st = 'kick'; D.t = 0; } }
+    else if (D.st === 'kick') { if (D.t > 0.22) { D.st = 'hover'; D.t = 0; } }
+    else if (D.st === 'hover') { D.y += Math.sin(D.t * 6) * 0.4; if (D.t > 0.9) { D.st = 'home'; D.t = 0; D.sx = D.x; D.sy = D.y; } }
+    else if (D.st === 'home') { const k = Math.min(1, D.t / 0.45); D.x = lerp(D.sx, 170, k); D.y = lerp(D.sy, 880, k) - Math.sin(k * Math.PI) * 90; D.face = -1; if (k >= 1) { D.st = 'idle'; D.face = 1; } }
+    this.after(B, dt);
+  },
+  after(B, dt) {
+    for (const it of B.items) it.sh = Math.max(0, it.sh - dt);
+    for (const s of B.shine) s.t += dt; B.shine = B.shine.filter(s => s.t < 2.5);
+    for (const ch of B.chunks) { ch.life += dt; ch.vy += 1400 * dt; ch.x += ch.vx * dt; ch.y += ch.vy * dt; ch.rot += ch.vr * dt; if (ch.y > 930) { ch.y = 930; ch.vy *= -0.35; ch.vx *= 0.6; } }
+    B.chunks = B.chunks.filter(ch => ch.life < 2.2);
+  },
+  done: B => !B.items.length,
+  perfect: B => !B.items.length,
+  summary: B => `${B.cleared}/${B.total} barnacles`,
+  endWord: B => B.items.length ? 'TIME!' : 'CLEAN!',
+  hud(c, B) { c.fillStyle = 'rgba(255,255,255,.9)'; rr(c, 1270, 24, 220, 66, 33); c.fill(); txt(c, `${B.cleared}/${B.total}`, 1380, 59, 38, '#143b52', null); },
+  draw(c, B, t) {
+    const sky = c.createLinearGradient(0, 0, 0, 560); sky.addColorStop(0, '#7fd0ff'); sky.addColorStop(1, '#d9f4ff'); c.fillStyle = sky; c.fillRect(0, 0, W, 600);
+    c.fillStyle = '#ffe680'; c.beginPath(); c.arc(1400, 150, 62, 0, 7); c.fill();
+    c.strokeStyle = 'rgba(255,230,128,.6)'; c.lineWidth = 8; c.lineCap = 'round'; for (let i = 0; i < 10; i++) { const a = t * 0.3 + i * 0.628; c.beginPath(); c.moveTo(1400 + Math.cos(a) * 80, 150 + Math.sin(a) * 80); c.lineTo(1400 + Math.cos(a) * 108, 150 + Math.sin(a) * 108); c.stroke(); }
+    [[200, 140, 1], [620, 90, 0.8], [1050, 200, 1.1]].forEach(([x, y, s], i) => { const xx = (x + t * (8 + i * 3)) % 1800 - 100; c.fillStyle = '#fff'; c.beginPath(); c.arc(xx, y, 34 * s, 0, 7); c.arc(xx + 40 * s, y - 16 * s, 42 * s, 0, 7); c.arc(xx + 86 * s, y, 32 * s, 0, 7); c.fill(); });
+    c.fillStyle = '#2fb3d8'; c.fillRect(0, 540, W, 80); c.strokeStyle = '#bff0ff'; c.lineWidth = 5; c.beginPath(); for (let x = 0; x <= W; x += 20) c.lineTo(x, 545 + Math.sin(x * 0.02 + t * 2) * 5); c.stroke();
+    const sand = c.createLinearGradient(0, 600, 0, H); sand.addColorStop(0, '#ffe3a3'); sand.addColorStop(1, '#f5c56a'); c.fillStyle = sand; c.fillRect(0, 600, W, 400);
+    c.fillStyle = 'rgba(200,150,70,.35)'; for (let i = 0; i < 70; i++) { c.beginPath(); c.arc((i * 263) % W, 640 + (i * 137) % 340, 3, 0, 7); c.fill(); }
+    // beach umbrella and bucket for flavour
+    c.fillStyle = '#8a5a2b'; c.fillRect(1468, 640, 8, 250);
+    [['#ff5a4e', -1], ['#fff', -0.4], ['#ff5a4e', 0.2], ['#fff', 0.8]].forEach(([col, a]) => { c.fillStyle = col; c.beginPath(); c.moveTo(1472, 640); c.arc(1472, 640, 120, Math.PI + 0.25 + (a + 1) * 0.66, Math.PI + 0.25 + (a + 1.6) * 0.66); c.closePath(); c.fill(); });
+    // boat cradle
+    c.fillStyle = '#9a6a3a'; [[520, 1], [1060, 1]].forEach(([x]) => { c.beginPath(); c.moveTo(x - 70, 920); c.lineTo(x - 22, 762); c.lineTo(x + 22, 762); c.lineTo(x + 70, 920); c.closePath(); c.fill(); c.fillStyle = '#7a4f28'; c.fillRect(x - 90, 912, 180, 18); c.fillStyle = '#9a6a3a'; });
+    c.fillStyle = 'rgba(120,80,30,.25)'; c.beginPath(); c.ellipse(790, 940, 560, 30, 0, 0, 7); c.fill();
+    // the boat, side view, in your colors
+    const skin = curSkin();
+    c.fillStyle = '#fff'; rr(c, 610, 318, 370, 150, 26); c.fill(); c.fillStyle = skin.dark; rr(c, 596, 300, 398, 34, 16); c.fill();
+    c.fillStyle = '#bfe9ff'; c.beginPath(); c.arc(795, 396, 56, 0, 7); c.fill(); c.strokeStyle = skin.dark; c.lineWidth = 8; c.stroke();
+    c.save(); c.beginPath(); c.arc(795, 396, 52, 0, 7); c.clip(); drawAvatar(c, 795, 404, 40, PROFILE, t); c.restore();
+    c.fillStyle = '#bfe9ff'; [660, 930].forEach(x => { rr(c, x - 26, 360, 52, 44, 10); c.fill(); });
+    bashHullPath(c); c.fillStyle = hullFill(c, skin, 452, 772); c.fill();
+    c.save(); bashHullPath(c); c.clip();
+    c.fillStyle = 'rgba(0,0,0,.14)'; c.fillRect(0, 700, W, 100);
+    c.fillStyle = skin.rim; c.fillRect(0, 452, W, 34); c.fillStyle = skin.dark; c.fillRect(0, 486, W, 8);
+    c.font = `46px ${FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = skin.rim; c.globalAlpha = 0.9; c.fillText(`S.S. ${PROFILE.name}`.toUpperCase(), 1040, 560); c.globalAlpha = 1;
+    c.fillStyle = '#e0f6ff'; [430, 560].forEach(x => { c.beginPath(); c.arc(x, 540, 20, 0, 7); c.fill(); c.strokeStyle = skin.dark; c.lineWidth = 6; c.stroke(); });
+    c.restore();
+    bashHullPath(c); c.strokeStyle = skin.dark; c.lineWidth = 6; c.stroke();
+    for (const s of B.shine) { const a = 1 - s.t / 2.5; c.globalAlpha = a; c.fillStyle = '#fff'; drawStar4(c, s.x + Math.sin(s.t * 3) * 10, s.y - s.t * 10, 10 + s.r * 0.3 * Math.sin(Math.min(1, s.t * 3) * Math.PI), t * 2); c.globalAlpha = 1; }
+    for (const it of B.items) drawBarnacle(c, it, t);
+    for (const ch of B.chunks) { c.globalAlpha = Math.min(1, (2.2 - ch.life) * 2); c.save(); c.translate(ch.x, ch.y); c.rotate(ch.rot); if (ch.weed) { c.strokeStyle = '#2f9a4a'; c.lineWidth = 5; c.beginPath(); c.moveTo(-14, 0); c.quadraticCurveTo(0, -10, 14, 0); c.stroke(); } else { c.fillStyle = '#e9e2cf'; c.strokeStyle = '#a89c80'; c.lineWidth = 2; c.beginPath(); c.moveTo(-ch.r, ch.r * 0.5); c.lineTo(0, -ch.r * 0.7); c.lineTo(ch.r, ch.r * 0.5); c.closePath(); c.fill(); c.stroke(); } c.restore(); c.globalAlpha = 1; }
+    const D = B.duck, kick = D.st === 'kick', air = D.st !== 'idle';
+    if (D.st === 'dash') { c.strokeStyle = 'rgba(255,255,255,.8)'; c.lineWidth = 6; c.lineCap = 'round'; for (let i = 0; i < 3; i++) { c.beginPath(); c.moveTo(D.x - D.face * (30 + i * 10), D.y - 20 + i * 16); c.lineTo(D.x - D.face * (90 + i * 20), D.y - 20 + i * 16); c.stroke(); } }
+    drawDuck(c, D.x, D.y, 2.6, D.face, t * 8, { air, walk: !air, mood: 'happy', rot: kick ? -0.55 : 0, flap: air ? 0.8 : 0, t });
+    drawHeadband(c, D.x, D.y, 2.6, D.face, t);
+    if (kick) { c.strokeStyle = 'rgba(255,255,255,.9)'; c.lineWidth = 7; c.beginPath(); c.arc(D.x + D.face * 40, D.y - 10, 44, -0.9, 0.9); c.stroke(); }
+    if (B.phase === 'end' && B.perfect) {
+      const k = Math.min(1, B.endT / 0.6); drawPeek(c, 'hippo', 1500, 600 - k * 20, t, 'surprised', { x: -1, y: 0 }, 0.95, k * 20);
+      if (B.endT > 0.6) txt(c, 'Oh, my barnacles!', 1330, 470, 34, '#fff');
+    }
+  },
+};
+
+/* =====================================================================
+   2. RING TOSS RESCUE
+   ===================================================================== */
+function drawBandAid(c, x, y, s, face) {
+  c.save(); c.translate(x, y); c.scale(s * face, s); c.translate(8, -21); c.rotate(-0.5);
+  c.fillStyle = '#ffd2a8'; rr(c, -9, -3.4, 18, 6.8, 3.4); c.fill(); c.fillStyle = '#f0b07e'; c.fillRect(-3, -3.4, 6, 6.8);
+  c.restore();
+}
+function drawLifeRing(c, x, y, r, rot) {
+  c.save(); c.translate(x, y); c.rotate(rot); c.lineWidth = r * 0.42;
+  for (let i = 0; i < 4; i++) { c.strokeStyle = i % 2 ? '#fff' : '#ff4d4d'; c.beginPath(); c.arc(0, 0, r, i * Math.PI / 2, (i + 1) * Math.PI / 2); c.stroke(); }
+  c.restore();
+}
+BONUS_GAMES.rescue = {
+  edge: '#2f8f7a',
+  init(B) {
+    const m = B.mode;
+    Object.assign(B, { total: { little: 8, big: 12, grown: 16 }[m], spawned: 0, saved: 0, gone: 0, ducks: [], rings: [], gators: [], spawnT: 0.4, inBoat: 0,
+      life: { little: 14, big: 10, grown: 7.5 }[m], maxOn: { little: 3, big: 4, grown: 5 }[m], catchR: { little: 100, big: 74, grown: 58 }[m],
+      golds: m === 'little' ? 1 : 2, throwT: 0, boat: { x: 800, y: 880 } });
+    B.pads = Array.from({ length: 14 }, () => ({ x: rand(60, W - 60), y: rand(170, 820), r: rand(22, 38), a: rand(0, 6) })).filter(p => dist(p.x, p.y, 800, 880) > 220);
+    for (let i = 0; i < (m === 'grown' ? 2 : m === 'big' ? 1 : 0); i++) B.gators.push({ x: rand(200, 1400), y: rand(260, 600), tx: rand(200, 1400), ty: rand(260, 600), st: 'swim', t: 0, wait: 5 + i * 4 });
+  },
+  spawn(B) {
+    for (let k = 0; k < 40; k++) {
+      const x = rand(140, 1460), y = rand(190, 690);
+      if (B.ducks.some(d => dist(d.x, d.y, x, y) < 150) || dist(x, y, 800, 880) < 260) continue;
+      const fast = B.mode === 'grown' ? 1.8 : B.mode === 'little' ? 0.6 : 1;
+      B.ducks.push({ x, y, vx: rand(-28, 28) * fast, vy: rand(-12, 12) * fast, t: 0, st: 'pop', gold: B.golds > 0 && Math.random() < 0.18, ph: rand(0, 6), face: Math.random() < 0.5 ? 1 : -1 });
+      if (B.ducks[B.ducks.length - 1].gold) B.golds--;
+      B.spawned++; BFX(() => { burst(x, y, 10, { col: ['#fff', '#bdf3ff'], min: 40, max: 140 }); ring(x, y); }); SFX.plop(); return;
+    }
+  },
+  tap(B, p) {
+    if (B.rings.filter(r => r.st === 'fly').length >= 2) return;
+    let tx = p.x, ty = clamp(p.y, 150, 800);
+    const flight = 0.32 + dist(800, 830, tx, ty) / 2400, snap = { little: 180, big: 95, grown: 0 }[B.mode];
+    let best = null, bd = snap;
+    for (const d of B.ducks) { if (d.st !== 'float' && d.st !== 'pop') continue; const dd = dist(tx, ty, d.x, d.y); if (dd < bd) { bd = dd; best = d; } }
+    if (best) { tx = best.x + best.vx * flight; ty = best.y + best.vy * flight; }
+    B.rings.push({ sx: 780, sy: 830, x: tx, y: ty, t: 0, dur: flight, st: 'fly', rot: 0 });
+    B.throwT = 0.3; SFX.toss();
+  },
+  update(B, dt) {
+    const m = B.mode, live = B.ducks.filter(d => d.st === 'float' || d.st === 'pop').length;
+    B.throwT = Math.max(0, B.throwT - dt);
+    B.spawnT -= dt;
+    if (B.spawnT <= 0 && B.spawned < B.total && live < B.maxOn) { this.spawn(B); B.spawnT = (B.time * 0.72) / B.total * rand(0.7, 1.2); }
+    for (const d of B.ducks) {
+      d.t += dt; d.ph += dt * 3;
+      if (d.st === 'pop') { if (d.t > 0.4) { d.st = 'float'; d.t = 0; } }
+      else if (d.st === 'float') {
+        d.x += d.vx * dt; d.y += d.vy * dt; if (d.x < 110 || d.x > 1490) d.vx *= -1; if (d.y < 170 || d.y > 720) d.vy *= -1;
+        if (Math.abs(d.vx) > 2) d.face = d.vx > 0 ? 1 : -1;
+        if (d.t > B.life) { d.st = 'leave'; d.t = 0; d.face = d.x < 800 ? -1 : 1; BFX(() => say(d.x, d.y - 50, 'I can swim home!', '#fff', 24, 1.2)); }
+      } else if (d.st === 'leave') { d.x += d.face * 220 * dt; if (d.x < -60 || d.x > W + 60) { d.st = 'gone'; B.gone++; } }
+      else if (d.st === 'reel') {
+        const k = Math.min(1, d.t / 0.8), e = k * k; d.x = lerp(d.rx, 800, e); d.y = lerp(d.ry, 840, e);
+        if (k >= 1) { d.st = 'gone'; B.saved++; B.inBoat++; SFX.saved(); SFX.quack(1.2);
+          if (d.gold) { bGem(B, 800, 760); bCoins(B, 800, 800, 8); } else bCoins(B, 800, 800, 4);
+          BFX(() => { say(800, 700, pick(['Saved!', 'Got you!', 'Safe!', 'Thank you!']), '#ffe14d', 36); burst(800, 830, 14, { type: 'heart', col: ['#ff7aa8', '#ffb3cc'], min: 60, max: 200, up: -120 }); }); }
+      }
+    }
+    B.ducks = B.ducks.filter(d => d.st !== 'gone');
+    for (const R of B.rings) {
+      R.t += dt; R.rot += dt * 9;
+      if (R.st === 'fly' && R.t >= R.dur) {
+        R.st = 'float'; R.t = 0;
+        let best = null, bd = B.catchR;
+        for (const d of B.ducks) { if (d.st !== 'float' && d.st !== 'pop') continue; const dd = dist(R.x, R.y, d.x, d.y); if (dd < bd) { bd = dd; best = d; } }
+        const gator = B.gators.find(g => g.st === 'swim' && g.t > g.wait && dist(g.x, g.y, R.x, R.y) < 70);
+        if (gator && !best) { R.st = 'gone'; gator.st = 'chomp'; gator.ct = 0; SFX.chomp(); BFX(() => say(gator.x, gator.y - 60, 'CHOMP!', '#fff', 32)); }
+        else if (best) { best.st = 'reel'; best.t = 0; best.rx = best.x; best.ry = best.y; R.st = 'reel'; R.duck = best; SFX.coin(); }
+        else { SFX.plop(); BFX(() => { burst(R.x, R.y, 10, { col: ['#fff', '#bdf3ff'], min: 40, max: 140 }); ring(R.x, R.y); }); }
+      } else if (R.st === 'float' && R.t > 1.2) R.st = 'gone';
+      else if (R.st === 'reel') { if (!R.duck || R.duck.st !== 'reel') R.st = 'gone'; else { R.x = R.duck.x; R.y = R.duck.y; } }
+    }
+    B.rings = B.rings.filter(R => R.st !== 'gone');
+    for (const g of B.gators) {
+      g.t += dt;
+      if (g.st === 'chomp') { g.ct += dt; if (g.ct > 1.2) g.st = 'swim'; continue; }
+      const dx = g.tx - g.x, dy = g.ty - g.y, L = Math.hypot(dx, dy);
+      if (L < 10) { g.tx = rand(200, 1400); g.ty = rand(240, 640); } else { g.x += dx / L * 60 * dt; g.y += dy / L * 60 * dt; }
+    }
+  },
+  done: B => B.spawned >= B.total && !B.ducks.length,
+  perfect: B => B.saved >= B.total,
+  summary: B => `${B.saved}/${B.total} ducks saved`,
+  endWord: B => B.spawned >= B.total && !B.ducks.length ? 'ALL DONE!' : 'TIME!',
+  hud(c, B, t) { c.fillStyle = 'rgba(255,255,255,.9)'; rr(c, 1270, 24, 220, 66, 33); c.fill(); drawDuck(c, 1316, 66, 1.3, 1, 0, { mood: 'happy', t }); txt(c, `${B.saved}/${B.total}`, 1412, 59, 38, '#143b52', null); },
+  draw(c, B, t) {
+    const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#5fc3a5'); g.addColorStop(1, '#2f8f7a'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+    if (WATER_TILE) { c.save(); c.globalAlpha = 0.5; c.fillStyle = c.createPattern(WATER_TILE, 'repeat'); c.translate((t * 12) % 220, (t * 6) % 220); c.fillRect(-240, -240, W + 480, H + 480); c.restore(); }
+    c.fillStyle = '#7a5a34'; c.beginPath(); c.moveTo(0, 0); c.lineTo(W, 0); c.lineTo(W, 110); for (let x = W; x >= 0; x -= 40) c.lineTo(x, 118 + Math.sin(x * 0.03) * 10); c.fill();
+    c.strokeStyle = '#4f8f3a'; c.lineWidth = 5; c.lineCap = 'round'; for (let i = 0; i < 40; i++) { const x = 20 + i * 40, h = 40 + (i * 37) % 40; c.beginPath(); c.moveTo(x, 120); c.quadraticCurveTo(x + Math.sin(t + i) * 8, 120 - h / 2, x + Math.sin(t * 1.3 + i) * 10, 120 - h); c.stroke(); }
+    for (const p of B.pads) { c.fillStyle = '#4fbf63'; c.beginPath(); c.moveTo(p.x, p.y); c.arc(p.x, p.y, p.r, p.a + 0.4, p.a + Math.PI * 2 - 0.1); c.closePath(); c.fill(); }
+    for (const gt of B.gators) { if (gt.t < gt.wait) continue; drawPeek(c, 'gator', gt.x, gt.y, t, gt.st === 'chomp' ? 'smug' : 'calm', { x: Math.sign(800 - gt.x), y: 0.3 }, 0.62); }
+    for (const R of B.rings) if (R.st === 'reel') { c.strokeStyle = '#f3e6cc'; c.lineWidth = 4; c.beginPath(); c.moveTo(780, 840); c.quadraticCurveTo((780 + R.x) / 2, (840 + R.y) / 2 + 40, R.x, R.y); c.stroke(); }
+    for (const R of B.rings) if (R.st === 'float') { c.globalAlpha = Math.max(0, 1 - R.t / 1.2); drawLifeRing(c, R.x, R.y, 26, R.rot * 0.1); c.globalAlpha = 1; }
+    for (const d of B.ducks) {
+      const s = d.st === 'pop' ? Math.min(1, d.t / 0.4) * 2.3 : 2.3, sad = d.st === 'float';
+      c.globalAlpha = d.st === 'leave' ? 0.85 : 1;
+      drawDuck(c, d.x, d.y + Math.sin(d.ph) * 3, s, d.face, d.ph, { swim: true, gold: d.gold, mood: sad ? 'dizzy' : 'happy', sweat: sad && d.t > B.life * 0.6, t });
+      if (sad || d.st === 'reel') drawBandAid(c, d.x, d.y + Math.sin(d.ph) * 3, s, d.face);
+      if (sad) { dizzyStars(c, d.x + 10, d.y - 66, 22, t + d.ph); if (Math.sin(d.t * 2.2 + d.ph) > 0.55) { c.fillStyle = '#fff'; rr(c, d.x - 46, d.y - 128, 92, 40, 16); c.fill(); txt(c, 'Help!', d.x, d.y - 108, 28, '#ff5a4e', null); } }
+      if (d.st === 'reel') drawLifeRing(c, d.x, d.y + 4, 32, 0);
+      c.globalAlpha = 1;
+    }
+    for (const R of B.rings) if (R.st === 'fly') {
+      const k = Math.min(1, R.t / R.dur), h = 140 + dist(R.sx, R.sy, R.x, R.y) * 0.18;
+      c.fillStyle = 'rgba(6,40,70,.2)'; c.beginPath(); c.ellipse(R.x, R.y, 30 * k, 12 * k, 0, 0, 7); c.fill();
+      drawLifeRing(c, lerp(R.sx, R.x, k), lerp(R.sy, R.y, k) - Math.sin(k * Math.PI) * h, 28 + Math.sin(k * Math.PI) * 10, R.rot);
+    }
+    c.save(); c.translate(800, 890); c.rotate(-Math.PI / 2); c.scale(1.7, 1.7); drawHull(c, curSkin(), t, false, PROFILE.decal); c.restore();
+    for (let i = 0; i < Math.min(5, B.inBoat); i++) drawDuck(c, 752 + i * 24, 930, 0.9, 1, t * 4 + i, { mood: 'happy', t });
+    drawAvatar(c, 800, 872 - (B.throwT > 0 ? 8 : 0), 30, PROFILE, t);
+    if (B.throwT > 0) drawLifeRing(c, 840, 830, 16, t * 10);
+  },
+};
+
+/* =====================================================================
+   3. BALLOON BONANZA
+   ===================================================================== */
+const BAL_COLS = ['#ff5a6e', '#ffc531', '#3fc46a', '#3f8cff', '#a66bff', '#ff7ac0'];
+BONUS_GAMES.balloons = {
+  edge: '#ffd1ec',
+  init(B) {
+    const m = B.mode;
+    Object.assign(B, { balloons: [], spawnT: 0.4, popped: 0, escaped: 0, spawned: 0, gemLeft: 2, n: 0,
+      spd: { little: [80, 110], big: [115, 165], grown: [160, 230] }[m], r: { little: 56, big: 46, grown: 40 }[m], pad: { little: 40, big: 24, grown: 14 }[m],
+      gap: { little: [1.25, 0.8], big: [0.95, 0.45], grown: [0.75, 0.33] }[m] });
+  },
+  tap(B, p) {
+    let best = null, bd = 1e9;
+    for (const b of B.balloons) { const r = b.big ? B.r * 1.7 : B.r, d = dist(p.x, p.y, b.x, b.y); if (d < r + B.pad && d < bd) { bd = d; best = b; } }
+    if (!best) return;
+    if (best.big && --best.hp > 0) { best.sq = 0.25; SFX.bonk(); BFX(() => say(best.x, best.y - 120, `${best.hp}!`, '#fff', 30, 0.5)); return; }
+    B.balloons.splice(B.balloons.indexOf(best), 1); B.popped++; SFX.pop();
+    BFX(() => { burst(best.x, best.y, best.big ? 40 : 16, { type: 'confetti', col: [best.col, '#fff', '#ffe14d'], min: 80, max: best.big ? 420 : 260, g: 300 }); ring(best.x, best.y, 'rgba(255,255,255,.9)', 0.4, best.big ? 120 : 70); if (Math.random() < 0.4 || best.big) say(best.x, best.y - 40, 'POP!', '#fff', best.big ? 48 : 32, 0.6); });
+    if (best.kind === 'gem') bGem(B, best.x, best.y);
+    else bCoins(B, best.x, best.y, best.big ? 12 : best.kind === 'gold' ? 5 : 1);
+  },
+  update(B, dt) {
+    const prog = clamp(B.pt / B.time, 0, 1);
+    B.spawnT -= dt;
+    if (B.spawnT <= 0 && B.left > 2.5) {
+      B.n++;
+      const pipe = [320, 640, 960, 1280][randi(0, 3)], big = B.n % 11 === 0, roll = Math.random();
+      const kind = big ? 'big' : B.gemLeft > 0 && roll < 0.05 && B.n > 6 ? 'gem' : roll < 0.14 ? 'gold' : 'reg';
+      if (kind === 'gem') B.gemLeft--;
+      B.balloons.push({ x0: pipe + rand(-16, 16), x: pipe, y: 960, vy: -rand(B.spd[0], B.spd[1]) * (1 + prog * 0.35) * (big ? 0.6 : 1), col: kind === 'gold' ? '#ffd23f' : kind === 'gem' ? '#9b7bff' : pick(BAL_COLS), kind, big, hp: big ? (B.mode === 'little' ? 3 : 4) : 1, ph: rand(0, 6), wob: rand(18, 46), sq: 0 });
+      B.spawned++; B.spawnT = lerp(B.gap[0], B.gap[1], prog) * rand(0.8, 1.2);
+    }
+    for (const b of B.balloons) { b.y += b.vy * dt; b.ph += dt; b.x = b.x0 + Math.sin(b.ph * 1.4) * b.wob * Math.min(1, (960 - b.y) / 200); b.sq = Math.max(0, b.sq - dt); if (b.y < -110) { b.gone = true; B.escaped++; } }
+    B.balloons = B.balloons.filter(b => !b.gone);
+  },
+  after(B, dt) { for (const b of B.balloons) { b.y += b.vy * dt * 0.5; b.ph += dt; } },
+  done: () => false,
+  perfect: B => B.escaped === 0 && B.popped > 4,
+  summary: B => `${B.popped} popped`,
+  endWord: () => 'TIME!',
+  hud(c, B, t) { c.fillStyle = 'rgba(255,255,255,.9)'; rr(c, 1270, 24, 220, 66, 33); c.fill(); this.drawBalloon(c, { x: 1314, y: 54, col: '#ff5a6e', kind: 'reg', big: false, sq: 0, ph: 0 }, 20, t); txt(c, String(B.popped), 1410, 59, 38, '#143b52', null); },
+  drawBalloon(c, b, r, t) {
+    const R = b.big ? r * 1.7 : r, sq = b.sq > 0 ? 1 + Math.sin(t * 50) * b.sq * 0.5 : 1;
+    c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 2; c.beginPath(); c.moveTo(b.x, b.y + R * 1.12); for (let k = 1; k <= 5; k++) c.lineTo(b.x + Math.sin(b.ph * 3 + k) * 5, b.y + R * 1.12 + k * R * 0.28); c.stroke();
+    c.save(); c.translate(b.x, b.y); c.scale(sq, 1 / sq);
+    c.fillStyle = b.col; c.beginPath(); c.ellipse(0, 0, R, R * 1.14, 0, 0, 7); c.fill();
+    c.beginPath(); c.moveTo(-R * 0.14, R * 1.1); c.lineTo(R * 0.14, R * 1.1); c.lineTo(0, R * 1.0); c.closePath(); c.fill();
+    if (b.big) { c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = R * 0.12; [-0.45, 0, 0.45].forEach(k => { c.beginPath(); c.ellipse(0, 0, R * Math.abs(k) + 2, R * 1.12, 0, 0, 7); c.stroke(); }); c.fillStyle = '#fff'; drawStar4(c, 0, 0, R * 0.35, t); }
+    if (b.kind === 'gem') gemIc(c, 0, 0, R * 0.45);
+    if (b.kind === 'gold') { c.fillStyle = '#fff'; drawStar4(c, R * 0.3, -R * 0.4, R * 0.25 + Math.sin(t * 8) * 3, t * 2); }
+    c.fillStyle = 'rgba(255,255,255,.45)'; c.beginPath(); c.ellipse(-R * 0.38, -R * 0.42, R * 0.22, R * 0.36, 0.5, 0, 7); c.fill();
+    c.restore();
+  },
+  draw(c, B, t) {
+    const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#ffc2e6'); g.addColorStop(1, '#fff1fa'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+    [[180, 200, 1], [700, 130, 0.8], [1250, 240, 1.2], [1000, 420, 0.7]].forEach(([x, y, s], i) => { const xx = (x + t * (6 + i * 2)) % 1800 - 100; c.fillStyle = '#fff'; c.beginPath(); c.arc(xx, y, 36 * s, 0, 7); c.arc(xx + 42 * s, y - 18 * s, 46 * s, 0, 7); c.arc(xx + 92 * s, y, 34 * s, 0, 7); c.fill(); c.fillStyle = 'rgba(255,170,215,.4)'; c.beginPath(); c.ellipse(xx + 44 * s, y + 18 * s, 80 * s, 14 * s, 0, 0, 7); c.fill(); });
+    c.fillStyle = '#ffb3d9'; c.beginPath(); c.moveTo(0, 860); for (let x = 0; x <= W; x += 40) c.lineTo(x, 840 + Math.sin(x * 0.006) * 40); c.lineTo(W, H); c.lineTo(0, H); c.fill();
+    c.save(); c.translate(800, 935); c.scale(0.8, 0.8); drawCreature(c, 'octo', B.phase === 'end' ? 'happy' : 'smug', 0.3, t, false, { x: 0, y: -1 }); c.restore();
+    for (const b of B.balloons) this.drawBalloon(c, b, B.r, t);
+    [320, 640, 960, 1280].forEach(x => {
+      c.save(); c.beginPath(); c.rect(x - 52, 880, 104, 130); c.clip(); c.fillStyle = '#fff'; c.fillRect(x - 52, 880, 104, 130);
+      c.fillStyle = '#ff4d6d'; for (let i = -4; i < 8; i++) { c.beginPath(); c.moveTo(x - 60 + i * 34, 1010); c.lineTo(x - 40 + i * 34, 1010); c.lineTo(x + 40 + i * 34, 870); c.lineTo(x + 20 + i * 34, 870); c.closePath(); c.fill(); }
+      c.restore();
+      c.fillStyle = '#3fc46a'; rr(c, x - 68, 856, 136, 40, 12); c.fill(); c.fillStyle = 'rgba(255,255,255,.35)'; rr(c, x - 60, 860, 120, 10, 5); c.fill();
+    });
+  },
+};
+
+/* =====================================================================
+   4. SNOW MATCH
+   ===================================================================== */
+const MATCH_FACES = ['duck', 'hippo', 'gator', 'octo', 'walrus', 'coin', 'star', 'heart'];
+function drawCardFace(c, f, x, y, s, t) {
+  if (f === 'captain') drawAvatar(c, x, y + 6, 50 * s, PROFILE, t);
+  else if (f === 'duck') drawDuck(c, x - 4 * s, y + 26 * s, 3.4 * s, 1, 0, { mood: 'happy', t });
+  else if (f === 'coin') coinIc(c, x, y, 46 * s);
+  else if (f === 'gem') gemIc(c, x, y, 50 * s);
+  else if (f === 'heart') { c.fillStyle = '#ff4d6d'; drawHeartShape(c, x, y + 4 * s, 52 * s); }
+  else if (f === 'star') { c.fillStyle = '#ffc531'; c.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = (i % 2 ? 22 : 52) * s; c.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); } c.closePath(); c.fill(); c.strokeStyle = '#d99500'; c.lineWidth = 4 * s; c.stroke(); }
+  else { c.save(); c.translate(x, y + 10 * s); c.scale(0.62 * s, 0.62 * s); drawCreature(c, f, 'calm', 0, t, false, null); c.restore(); }
+}
+function drawFlake(c, x, y, r) { c.lineCap = 'round'; for (let i = 0; i < 3; i++) { const a = i * Math.PI / 3; c.beginPath(); c.moveTo(x - Math.cos(a) * r, y - Math.sin(a) * r); c.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); c.stroke(); } }
+BONUS_GAMES.match = {
+  edge: '#bfe4ff',
+  init(B) {
+    const m = B.mode, [cols, rows] = m === 'little' ? [4, 2] : m === 'grown' ? [6, 3] : [4, 3], pairs = cols * rows / 2;
+    const faces = ['captain', 'gem', ...shuffle(MATCH_FACES.slice())].slice(0, pairs), deck = shuffle([...faces, ...faces]);
+    const cw = m === 'grown' ? 158 : 176, ch = m === 'grown' ? 196 : 216, gap = 26;
+    const x0 = 800 - (cols * cw + (cols - 1) * gap) / 2 + cw / 2, y0 = 570 - (rows * ch + (rows - 1) * gap) / 2 + ch / 2;
+    B.cards = deck.map((f, i) => ({ f, x: x0 + (i % cols) * (cw + gap), y: y0 + Math.floor(i / cols) * (ch + gap), up: true, flip: 1, done: false, glow: 0 }));
+    Object.assign(B, { cw, ch, pairs, found: 0, misses: 0, tries: { little: Infinity, big: 6, grown: 3 }[m], pick: [], lockT: 0, peek: { little: 3.2, big: 2.4, grown: 1.5 }[m], peeked: false });
+  },
+  begin(B) { BFX(() => say(800, 160, 'Look closely!', '#fff', 44, 1.6)); },
+  tap(B, p) {
+    if (!B.peeked || B.lockT > 0 || B.pick.length >= 2) return;
+    const cd = B.cards.find(k => Math.abs(p.x - k.x) < B.cw / 2 && Math.abs(p.y - k.y) < B.ch / 2);
+    if (!cd || cd.up || cd.done) return;
+    cd.up = true; SFX.flip(); B.pick.push(cd);
+    if (B.pick.length < 2) return;
+    const [a, b] = B.pick;
+    if (a.f === b.f) {
+      a.done = b.done = true; a.glow = b.glow = 1; B.found++; B.pick = []; SFX.match();
+      const x = (a.x + b.x) / 2, y = Math.min(a.y, b.y) - B.ch / 2;
+      BFX(() => { [a, b].forEach(k => burst(k.x, k.y, 14, { type: 'spark', col: ['#fff', '#bfe9ff', '#ffe14d'], min: 60, max: 220 })); say(x, y, a.f === 'captain' ? "That's you!" : pick(['Match!', 'Yes!', 'Snow way!', 'Pair!']), '#fff', 38); });
+      if (a.f === 'gem') bGem(B, b.x, b.y);
+      else bCoins(B, b.x, b.y, { captain: 10, coin: 8, star: 6, heart: 5 }[a.f] || 4);
+    } else { B.lockT = 0.9; B.misses++; setTimeout(() => SFX.miss(), 250); }
+  },
+  update(B, dt) {
+    if (!B.peeked && B.pt > B.peek) { B.peeked = true; B.cards.forEach(k => { k.up = false; }); SFX.flip(); }
+    if (B.lockT > 0) { B.lockT -= dt; if (B.lockT <= 0) { B.pick.forEach(k => { k.up = false; }); B.pick = []; } }
+    this.after(B, dt);
+  },
+  after(B, dt) { for (const k of B.cards) { const tgt = k.up || k.done ? 1 : 0; k.flip += clamp(tgt - k.flip, -dt * 5, dt * 5); k.glow = Math.max(0, k.glow - dt * 0.7); } },
+  done: B => B.found >= B.pairs || (B.misses >= B.tries && B.lockT <= 0),
+  perfect: B => B.found >= B.pairs,
+  summary: B => `${B.found}/${B.pairs} pairs`,
+  endWord: B => B.misses >= B.tries ? 'OUT OF TRIES!' : 'TIME!',
+  hud(c, B, t) {
+    if (B.tries === Infinity) return;
+    c.fillStyle = 'rgba(255,255,255,.9)'; rr(c, 1170, 24, 320, 66, 33); c.fill(); txt(c, 'Tries', 1232, 59, 28, '#5d7f93', null);
+    c.strokeStyle = '#3f8cff'; c.lineWidth = 5; for (let i = 0; i < B.tries; i++) { c.globalAlpha = i < B.tries - B.misses ? 1 : 0.2; drawFlake(c, 1300 + i * 30, 57, 12); } c.globalAlpha = 1;
+  },
+  draw(c, B, t) {
+    const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#9fd4f5'); g.addColorStop(1, '#e8f7ff'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+    c.fillStyle = '#fff'; c.beginPath(); c.moveTo(0, 930); for (let x = 0; x <= W; x += 50) c.lineTo(x, 915 + Math.sin(x * 0.01) * 22); c.lineTo(W, H); c.lineTo(0, H); c.fill();
+    c.save(); c.translate(1460, 900); c.scale(0.55, 0.55); drawCreature(c, 'walrus', B.phase === 'end' ? 'happy' : 'asleep', 0, t, false, null); c.restore();
+    c.fillStyle = 'rgba(255,255,255,.85)'; for (let i = 0; i < 60; i++) { const x = (i * 271 + Math.sin(t * 0.7 + i) * 30) % W, y = (i * 173 + t * (30 + (i % 5) * 8)) % H; c.beginPath(); c.arc(x, y, 2 + (i % 3), 0, 7); c.fill(); }
+    for (const k of B.cards) {
+      const sx = Math.abs(Math.cos((1 - k.flip) * Math.PI)), front = k.flip > 0.5, lift = k.glow * 10;
+      c.save(); c.translate(k.x, k.y - lift); c.scale(Math.max(0.02, sx), 1);
+      if (k.glow > 0) { c.shadowColor = 'rgba(255,230,120,.9)'; c.shadowBlur = 30 * k.glow; }
+      c.fillStyle = 'rgba(20,59,82,.18)'; rr(c, -B.cw / 2 + 4, -B.ch / 2 + 8, B.cw, B.ch, 20); c.fill(); c.shadowBlur = 0;
+      if (front) {
+        c.fillStyle = '#fff'; rr(c, -B.cw / 2, -B.ch / 2, B.cw, B.ch, 20); c.fill(); c.strokeStyle = k.done ? '#3fc46a' : '#9fd4f5'; c.lineWidth = 6; c.stroke();
+        drawCardFace(c, k.f, 0, -4, B.cw / 176, t);
+      } else {
+        const bg = c.createLinearGradient(0, -B.ch / 2, 0, B.ch / 2); bg.addColorStop(0, '#bfe9ff'); bg.addColorStop(1, '#6fc3ee');
+        c.fillStyle = bg; rr(c, -B.cw / 2, -B.ch / 2, B.cw, B.ch, 20); c.fill(); c.strokeStyle = '#fff'; c.lineWidth = 6; c.stroke();
+        c.strokeStyle = 'rgba(255,255,255,.9)'; c.lineWidth = 7; drawFlake(c, 0, 0, 42);
+        c.fillStyle = 'rgba(255,255,255,.35)'; c.beginPath(); c.moveTo(-B.cw / 2 + 14, -B.ch / 2 + 14); c.lineTo(-B.cw / 2 + 50, -B.ch / 2 + 14); c.lineTo(-B.cw / 2 + 14, -B.ch / 2 + 60); c.closePath(); c.fill();
+      }
+      c.restore();
+    }
+  },
+};
+
+/* =====================================================================
+   FLOW — boss win → bonus → (pirates after Frosty Bay) → next level
+   ===================================================================== */
+nextFromWin = function () {
+  const L = G.L;
+  if (G.pirates) return startGame(L + 1);
+  if (G.isBoss) { const kind = BONUS_FOR[G.world.id], replay = G.replay; return startBonus(kind, { L, replay, then: () => (L % (LEVELS_PER_WORLD * WORLDS.length) === 0 ? startPirates(L) : startGame(L + 1)) }); }
+  startGame(L + 1);
+};
+restartLevel = function () { if (G && G.pirates) startPirates(G.pirates.afterL); else startGame(G.L); };
+const _showWinV13 = showWin;
+showWin = function () {
+  if (G.pirates) return showPirateWin();
+  _showWinV13();
+  if (G.isBoss) $('btn-next').innerHTML = `${icon('star')}Bonus stage!`;
+};
+function showPirateWin() {
+  const first = !(PROFILE.pirates && PROFILE.pirates.wins), little = G.mode === 'little';
+  const stars = little ? (G.lost <= 1 ? 3 : G.lost <= 3 ? 2 : 1) : (G.lost === 0 ? 3 : G.lost === 1 ? 2 : 1);
+  const bounty = first ? 300 : 120, gems = first ? 10 : 2;
+  PROFILE.coins += bounty; PROFILE.gems += gems;
+  PROFILE.pirates = { wins: ((PROFILE.pirates && PROFILE.pirates.wins) || 0) + 1, best: Math.max((PROFILE.pirates && PROFILE.pirates.best) || 0, stars) };
+  if (first) { if (!PROFILE.skins.includes('galleon')) PROFILE.skins.push('galleon'); PROFILE.hats = PROFILE.hats || []; if (!PROFILE.hats.includes('admiral')) PROFILE.hats.push('admiral'); }
+  PROFILE.level = Math.max(PROFILE.level, G.L + 1);
+  const xp = first ? 300 : 120; addXP(xp); persist();
+  $('win-title').textContent = first ? 'Harbor Saved!' : 'Pirates Sunk!';
+  const rows = [['Coins you found', `+${G.coins}${icon('coin')}`], ['Pirate bounty', `+${bounty}${icon('coin')}`], ['Treasure gems', `+${gems}${icon('gem')}`], ['Captain XP', `+${xp}${icon('xp')}`]];
+  if (first) rows.push(['Pirate Galleon boat', 'NEW!'], ["Admiral's Hat", 'NEW!']);
+  $('win-rewards').innerHTML = rows.map(([a, v]) => `<div class="reward"><span>${a}</span><span>${v}</span></div>`).join('');
+  if (typeof showRankUps === 'function') showRankUps();
+  const st = $('win-stars'); st.innerHTML = [0, 1, 2].map(() => `<span class="ic">${ICONS.star}</span>`).join('');
+  [0, 1, 2].forEach(i => { if (i < stars) setTimeout(() => { st.children[i].classList.add('on'); SFX.star(i); }, 350 + i * 320); });
+  $('win-frame').hidden = false; drawPirateFrame(first);
+  $('frame-caption').textContent = first ? `${PROFILE.name} sank Captain Squawk! The End… or is it?` : `${PROFILE.name} sank the pirates again!`;
+  const chest = $('btn-chest'); chest.hidden = false; chest.classList.add('shake'); chest.disabled = false; chest.innerHTML = CHEST_SVG(false) + '<small>Tap to open!</small>'; $('chest-prize').hidden = true;
+  $('btn-next').innerHTML = `${icon('play')}Keep sailing`;
+  if (first) setTimeout(() => toast('Pirate prizes!', "Pirate Galleon + Admiral's Hat are in your Dock", 'star', '#ffc531'), 1600);
+  show('scr-win');
+}
+function drawPirateFrame(first) {
+  const c0 = $('frame-canvas'), c = c0.getContext('2d'), w = c0.width, h = c0.height;
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#ffb36b'); g.addColorStop(0.45, '#ffd9a0'); g.addColorStop(0.46, '#3fb6d8'); g.addColorStop(1, '#0a5f86'); c.fillStyle = g; c.fillRect(0, 0, w, h);
+  c.fillStyle = '#ffe680'; c.beginPath(); c.arc(520, 200, 50, Math.PI, 0); c.fill();
+  c.save(); c.translate(430, 300); c.scale(0.62, 0.62); drawShip(c, { x: 0, y: 0, hp: 1, hitT: 0, sinkT: 2.3, sinking: true, flashT: 0, talkT: 1 }, 1, true); c.restore();
+  c.fillStyle = 'rgba(10,95,134,.55)'; c.fillRect(0, 330, w, h - 330);
+  drawAvatar(c, 170, 300, 92, first ? { ...PROFILE, hat: 'admiral' } : PROFILE, 0);
+  const rng = mulberry(17); for (let i = 0; i < 50; i++) { c.fillStyle = ['#ff6a55', '#ffc531', '#3fc46a', '#3f8cff', '#a66bff', '#fff'][i % 6]; c.save(); c.translate(rng() * w, rng() * h * 0.6); c.rotate(rng() * 6); c.fillRect(-6, -3, 12, 6); c.restore(); }
+  [[40, 440], [90, 452], [300, 446]].forEach(([x, y], i) => drawDuck(c, x, y, 1.6, i % 2 ? -1 : 1, i, { swim: true, mood: 'happy' }));
+}
+
+/* ---------- home: bonus replays, the pirate card, prize labels ---------- */
+const _renderHomeV13 = renderHome;
+renderHome = function () {
+  _renderHomeV13();
+  const p = PROFILE, wrap = $('home-worlds');
+  [...wrap.children].forEach((card, w) => {
+    const W0 = WORLDS[w]; if (!W0 || !p.trophies.includes(W0.id)) return;
+    const kind = BONUS_FOR[W0.id], rec = (p.bonus || {})[kind], b = document.createElement('button'); b.className = 'bonus-btn';
+    b.innerHTML = `${icon('star')}Bonus: ${BONUS_INFO[kind].name}${rec && rec.perfect ? ' <em>Perfect!</em>' : ''}`;
+    b.addEventListener('click', () => { SFX.click(); startBonus(kind, { L: (w + 1) * LEVELS_PER_WORLD, replay: true }); });
+    card.append(b);
+  });
+  const loopLen = LEVELS_PER_WORLD * WORLDS.length;
+  if (p.trophies.includes('frosty') || p.level > loopLen) {
+    const wins = (p.pirates && p.pirates.wins) || 0, card = document.createElement('div'); card.className = 'world pirate-card';
+    card.style.setProperty('--wc', '#2b3a55'); card.style.setProperty('--wd', '#141d30');
+    card.innerHTML = `<h3>Pirate Cove<small>${wins ? `Pirates sunk ×${wins}` : 'The final battle!'}</small></h3><canvas width="640" height="250"></canvas><button class="btn go">${wins ? 'Sink them again' : 'Fight the pirates!'}</button>`;
+    const cv2 = card.querySelector('canvas'), c = cv2.getContext('2d'), g = c.createLinearGradient(0, 0, 0, 250);
+    g.addColorStop(0, '#3fb6d8'); g.addColorStop(1, '#0a5f86'); c.fillStyle = g; c.fillRect(0, 0, 640, 250);
+    c.save(); c.translate(380, 200); c.scale(0.68, 0.68); drawShip(c, { x: 0, y: 0, hp: 3, hitT: 0, sinkT: 0, sinking: false, flashT: 0, talkT: 0 }, 0, true); c.restore();
+    c.save(); c.translate(110, 150); drawDuck(c, 0, 0, 2.4, 1, 0, { mood: 'happy' }); c.restore();
+    card.querySelector('button').addEventListener('click', () => { SFX.click(); startPirates(Math.max(loopLen, Math.floor((p.level - 1) / loopLen) * loopLen)); });
+    wrap.append(card);
+    const dots = $('world-dots'); dots.innerHTML = [...wrap.children].map(() => '<i></i>').join('');
+    if (dots.children[0]) dots.children[Math.min(dots.children.length - 1, Math.floor((p.level - 1) / LEVELS_PER_WORLD) % (WORLDS.length + 1))].classList.add('on');
+  }
+  const tr = $('home-trophies'), box = document.createElement('div'); box.className = 'trophy'; box.title = 'Captain Squawk';
+  if (p.pirates && p.pirates.wins) { const c2 = document.createElement('canvas'); c2.width = c2.height = 96; const c = c2.getContext('2d'); c.translate(48, 70); c.scale(0.22, 0.22); drawShip(c, { x: 0, y: 0, hp: 3, hitT: 0, sinkT: 0, sinking: false, flashT: 0, talkT: 0 }, 0, true); box.append(c2); }
+  else box.innerHTML = `<span class="ic" style="width:24px;height:24px;color:#cbbd9f">${ICONS.lock}</span>`;
+  tr.append(box);
+};
+const _renderYardV13 = renderYard;
+renderYard = function (tab) {
+  _renderYardV13(tab);
+  const prizes = [...SKINS, ...HATS].filter(d => d.cost && d.cost.prize);
+  document.querySelectorAll('#dock-grid .skin').forEach(b => {
+    const d = prizes.find(x => x.name === (b.querySelector('b') || {}).textContent); if (!d) return;
+    if ((PROFILE.skins || []).includes(d.id) || (PROFILE.hats || []).includes(d.id)) return;
+    const f = b.querySelector('.price'); if (f) { f.className = 'price'; f.innerHTML = `${icon('lock')}Pirate prize`; }
+  });
+};
 
 </script>
 <script>if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));</script>
