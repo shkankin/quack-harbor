@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#1fb0d3">
-<meta name="app-version" content="1.3">
+<meta name="app-version" content="1.3.2">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -22,7 +22,7 @@
 :root{
   --sea:#1fb0d3; --sea-deep:#0a5f86; --sand:#ffd98a; --gold:#ffc531; --gold-d:#d99500;
   --coral:#ff6a55; --coral-d:#cf4532; --leaf:#3fc46a; --leaf-d:#26954b; --blue:#3f8cff; --blue-d:#2763c4;
-  --violet:#8f5bff; --violet-d:#6537d1; --ink:#143b52; --muted:#5d7f93; --cream:#fffaf0; --line:#ead9b8;
+  --violet:#8f5bff; --violet-d:#6537d1; --ink:#143b52; --muted:#4a6b7e; --cream:#fffaf0; --line:#ead9b8;
   --f-display:"Lilita One","Arial Rounded MT Bold","Trebuchet MS",system-ui,sans-serif;
   --f-body:"Nunito","Trebuchet MS",system-ui,sans-serif;
   color-scheme:light;
@@ -485,7 +485,7 @@ body.gutters .act-super{position:fixed;left:max(12px,calc(env(safe-area-inset-le
     <div class="logo" aria-label="Quack Harbor"><span class="l1">Quack</span><span class="l2">Harbor</span></div>
     <p class="tag">Who's sailing today?</p>
     <div class="players" id="players-list"></div>
-    <p class="ver">Quack Harbor v1.3</p>
+    <p class="ver">Quack Harbor v1.3.2</p>
   </div>
 </section>
 
@@ -820,7 +820,7 @@ const Sound = {
   ctx: null, out: null,
   get on() { return SAVE.sound !== false; },
   init() {
-    if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {}); return; }
+    if (this.ctx) { if (this.ctx.state !== 'running') this.ctx.resume().catch(() => {}); return; }
     try {
       const C = window.AudioContext || window.webkitAudioContext;
       this.ctx = new C(); this.out = this.ctx.createGain(); this.out.gain.value = 0.55; this.out.connect(this.ctx.destination);
@@ -1630,42 +1630,6 @@ function levelParams(L, mode) {
   if (isBossLevel(L)) { P.prankChance = 0; P.goal = mode === 'little' ? 3 : mode === 'grown' ? 7 : 5; P.lurkers = 0; P.maxDucks = Math.min(P.maxDucks, mode === 'grown' ? 3 : 2); }
   return P;
 }
-function boatStats(p) {
-  const u = id => upLevel(p, id);
-  return {
-    speed: 250 * (1 + 0.12 * u('speed')), seats: 2 + u('seats'), net: 74 + 14 * u('net') + (p.mode === 'little' ? 22 : 0),
-    jumpCd: 5.5 - 0.8 * u('jump'), jumpDur: 0.85 + 0.08 * u('jump'),
-    turboCd: 8, turboDur: 1.6 + 0.45 * u('turbo'), spinCd: 4 - 0.8 * u('spin'),
-    hearts: 3 + u('heart'), shield: u('shield') > 0,
-  };
-}
-
-function startLevel(L) {
-  const world = worldOf(L), boss = isBossLevel(L), mode = PROFILE.mode;
-  buildWorld(world);
-  POOLS = boss && world.bossKind === 'octo' ? [] : (world.pools || []).map(([x, y]) => ({ x, y, r: 46, pull: 165, sayT: 0 }));
-  const P = levelParams(L, mode), S = boatStats(PROFILE);
-  G = {
-    L, P, S, world, mode, isBoss: boss, t: 0, paused: false, over: false, won: false, endT: 0, shown: false,
-    boat: { x: world.id === 'swamp' ? 930 : 800, y: SHORE + 72, a: Math.PI / 2, spd: 0, vx: 0, vy: 0, r: 34, jumpT: 0, invT: 0, turboT: 0, spinT: 0, hitT: 0,
-      cd: { jump: 0, turbo: 0, spin: 0 }, seats: [], shield: S.shield, wakeT: 0, fullT: 0, bumpT: 0, hopped: false },
-    ducks: [], lurkers: [], drift: [], boss: null, pickups: [], parts: [], texts: [], flyers: [], beach: [],
-    delivered: 0, hearts: S.hearts, lost: 0, coins: 0, gems: 0, streak: 0, target: null,
-    spawnT: 1.4, coinT: 2.5, pendingCoins: 0, pendingGems: 0, firstCatch: false, firstDeliver: false,
-    gemTimes: [Math.random() < 0.65 ? rand(12, 30) : -1, L >= 5 ? rand(30, 55) : -1],
-    input: { x: 0, y: 0 },
-  };
-  (world.drifters || []).forEach(l => {
-    for (let i = 0; i < l.n; i++) G.drift.push({ x: (i + 0.35) * (W + 340) / l.n - 170, y: l.y, len: l.len, h: world.ice ? 54 : 40, vx: l.dir * l.speed * P.driftMul, ph: rand(0, 6), seed: randi(1, 999) });
-  });
-  for (let i = 0; i < P.lurkers; i++) {
-    const p = waterPoint(60, G.boat, 420);
-    G.lurkers.push({ kind: world.lurker, x: p.x, y: p.y, tx: p.x, ty: p.y, state: 'roam', t: 0, cd: P.lurkDelay + i * 3.5, px: 0, py: 0, ph: rand(0, 6) });
-  }
-  if (boss) G.boss = makeBoss(world.bossKind);
-  initAbilities(); initExtras(); initPranks();
-  if (typeof buildStatic === 'function') buildStatic();
-}
 
 /* ---------- effects ---------- */
 function burst(x, y, n, o = {}) {
@@ -1690,15 +1654,6 @@ function addCoins(x, y, n) {
 function addGems(x, y, n) { PROFILE.gems += n; G.gems += n; for (let i = 0; i < n; i++) fly(x, y, 'gem', 1, i * 0.12); }
 
 /* ---------- ducks ---------- */
-function spawnDuck() {
-  const busy = new Set(G.ducks.filter(d => d.state !== 'swim' && d.state !== 'gone').map(d => d.isl));
-  const free = ISLANDS.map((_, i) => i).filter(i => !busy.has(i));
-  if (!free.length) return;
-  const i = pick(free), I = ISLANDS[i];
-  const prank = Math.random() < (G.P.prankChance || 0);
-  G.ducks.push({ isl: i, state: 'walk', seg: 0, x: I.D.x, y: I.D.y, t: 0, face: 1, gold: !prank && Math.random() < G.P.goldChance, prank, ph: rand(0, 6), seed: rand(0, 99), tuft: Math.random() < 0.35 ? randi(1, 3) : 0, size: rand(0.92, 1.1) });
-  if (prank) prankSpawned(G.ducks[G.ducks.length - 1]); else SFX.quack(rand(1.15, 1.45));
-}
 function catchDuck(d, fromHop) {
   const b = G.boat;
   if (b.seats.length >= G.S.seats) {
@@ -1713,47 +1668,6 @@ function catchDuck(d, fromHop) {
   burst(d.x, d.y - 24, 3, { type: 'heart', col: ['#ff7ac0', '#ff4d6d', '#ffb3cf'], min: 30, max: 90, size: [6, 9], life: 0.9, up: -60 });
   G.firstCatch = true;
   return true;
-}
-function updateDucks(dt) {
-  const b = G.boat, P = G.P, canGrab = b.jumpT <= 0 && b.hitT <= 0;
-  for (const d of G.ducks) {
-    const I = ISLANDS[d.isl];
-    const frozen = G.freezeT > 0 && d.state !== 'fly';
-    if (!frozen) { d.t += dt; d.ph += dt * 9; }
-    if (d.state === 'walk') {
-      if (frozen) continue;
-      const tgt = I.path[d.seg + 1], dx = tgt.x - d.x, dy = tgt.y - d.y, L = Math.hypot(dx, dy), step = P.duckSpeed * dt;
-      if (Math.abs(dx) > 1) d.face = dx > 0 ? 1 : -1;
-      if (L <= step) { d.x = tgt.x; d.y = tgt.y; d.seg++; if (d.seg >= I.path.length - 1) { d.state = 'teeter'; d.t = 0; SFX.quack(1.2); } }
-      else { d.x += dx / L * step; d.y += dy / L * step; }
-    } else if (d.state === 'teeter') {
-      if (canGrab && dist(b.x, b.y, I.L.x, I.L.y) < netR() && catchDuck(d, true)) continue;
-      if ((!P.waits || d.prank) && d.t >= (d.prank ? 2.2 : P.teeter)) { d.state = 'hop'; d.t = 0; d.sx = d.x; d.sy = d.y; SFX.quack(1.4); }
-    } else if (d.state === 'hop') {
-      const k = Math.min(1, d.t / 0.45), lift = Math.sin(k * Math.PI) * 40;
-      d.x = lerp(d.sx, I.L.x, k); d.y = lerp(d.sy, I.L.y, k) - lift;
-      if (canGrab && dist(b.x, b.y, d.x, d.y + lift) < netR() && catchDuck(d, true)) continue;
-      if (k >= 1) {
-        d.state = 'swim'; d.t = 0; d.vx = I.n.x * 30 + rand(-15, 15); d.vy = I.n.y * 30 + rand(-15, 15);
-        SFX.splash(); burst(d.x, d.y, 14, { col: ['#fff', '#bdf3ff'], min: 60, max: 160 }); ring(d.x, d.y);
-        if (!d.prank) { if (G.streak > 1) say(d.x, d.y - 50, 'Splash! Streak reset', '#fff', 24); G.streak = 0; }
-      }
-    } else if (d.state === 'swim') {
-      if (!frozen) { d.x += d.vx * dt; d.y += d.vy * dt; d.vx *= 0.985; d.vy *= 0.985; }
-      collideWorld(d, 14); if (d.y < SHORE + 40) d.y = SHORE + 40;
-      for (const f of G.drift) { const R = driftRect(f); if (pushOutRect(d, 14, R.l, R.t, R.r, R.b)) d.x += f.vx * dt; }
-      if (canGrab && !d.prank && d.t > 0.3 && dist(b.x, b.y, d.x, d.y) < netR() * 0.85 && catchDuck(d, false)) continue;
-      if (d.t > (d.prank ? 1.4 : P.waits ? 9 : 5)) { d.state = 'gone'; burst(d.x, d.y, 8, { col: '#fff' }); ring(d.x, d.y, 'rgba(255,255,255,.7)', 0.5, 30); }
-    } else if (d.state === 'fly') {
-      const k = Math.min(1, d.t / (d.fd || 0.3));
-      d.x = lerp(d.sx, b.x, k); d.y = lerp(d.sy, b.y, k) - Math.sin(k * Math.PI) * 50;
-      if (k >= 1) { d.state = 'gone'; b.seats.push({ gold: d.gold, prank: !!d.prank }); if (d.prank) armPrank(); }
-    }
-  }
-  G.ducks = G.ducks.filter(d => d.state !== 'gone');
-  const live = G.ducks.filter(d => d.state !== 'swim').length, inPlay = G.delivered + b.seats.filter(s => !s.prank).length + G.ducks.filter(d => !d.prank).length;
-  G.spawnT -= dt;
-  if (G.spawnT <= 0 && live < P.maxDucks && inPlay < P.goal && !G.won) { spawnDuck(); G.spawnT = rand(P.spawnGap, P.spawnGap + 1.6); }
 }
 
 function deliver() {
@@ -1778,40 +1692,6 @@ function deliver() {
 }
 
 /* ---------- world creatures (hippo, gator, jelly, seal) ---------- */
-function updateLurkers(dt) {
-  const b = G.boat, P = G.P;
-  for (const h of G.lurkers) {
-    h.t += dt; h.ph += dt;
-    if (napping(h)) {
-      h.sleepT = Math.max(0, (h.sleepT || 0) - dt); h.dizzyT = Math.max(0, (h.dizzyT || 0) - dt); h.bubT = Math.max(0, (h.bubT || 0) - dt);
-      if (h.bubT > 0) h.x += Math.sin(h.t * 1.5) * 20 * dt;
-      if (!napping(h)) { h.cd = Math.max(h.cd, 2.5); burst(h.x, h.y, 10, { col: '#fff' }); }
-      continue;
-    }
-    const move = (tx, ty, sp) => { const dx = tx - h.x, dy = ty - h.y, L = Math.hypot(dx, dy); if (L > 1) { const s = Math.min(L, sp * dt); h.x += dx / L * s; h.y += dy / L * s; } return L; };
-    if (h.state === 'roam') {
-      if (move(h.tx, h.ty, P.lurkSpeed * 0.5) < 10) { const p = waterPoint(50); h.tx = p.x; h.ty = p.y; }
-      h.cd -= dt;
-      if (h.cd <= 0 && !G.won && !G.over && b.invT <= 0 && G.lurkers.every(o => o === h || o.state === 'roam')) { h.state = 'stalk'; h.t = 0; }
-    } else if (h.state === 'stalk') {
-      if (move(b.x, b.y, P.lurkSpeed) < 30 || h.t > 5) { h.state = 'warn'; h.t = 0; h.px = h.x; h.py = h.y; SFX.warn(); }
-    } else if (h.state === 'warn') {
-      if (h.t >= P.warn) {
-        h.state = 'pop'; h.t = 0; SFX.splash(); SFX.chomp(); say(h.px, h.py - 100, POP_WORD[h.kind] || 'CHOMP!', '#fff', 30, 0.8); burst(h.px, h.py, 22, { col: ['#fff', '#bdf3ff'], min: 80, max: 260 }); ring(h.px, h.py, 'rgba(255,255,255,.9)', 0.7, 110);
-        const d = dist(b.x, b.y, h.px, h.py);
-        if (d < 72 && b.jumpT <= 0 && b.invT <= 0 && b.spinT <= 0) hitBoat();
-        else if (d < 110 && b.jumpT > 0) { say(b.x, b.y - 80, 'Big hop!', '#3fc46a', 38); addCoins(b.x, b.y, 5); SFX.coin(); }
-        else if (d < 170 && b.invT <= 0) { say(b.x, b.y - 70, 'Dodged!', '#fff', 30); addCoins(b.x, b.y, 2); }
-      }
-    } else if (h.state === 'pop') {
-      if (h.t > 0.9) { h.state = 'roam'; h.t = 0; h.cd = rand(P.calm, P.calm + 3); const p = waterPoint(50, b, 350); h.tx = p.x; h.ty = p.y; h.x = h.px; h.y = h.py; }
-    }
-    if (h.state !== 'pop' && h.state !== 'warn') {
-      collideWorld(h, 26); if (h.y < SHORE + 60) h.y = SHORE + 60;
-      if (inClearZone(h.x, h.y, 10)) { if (h.x - CLEAR_ZONE.x < h.y - CLEAR_ZONE.y) h.x = CLEAR_ZONE.x - 12; else h.y = CLEAR_ZONE.y - 12; }
-    }
-  }
-}
 
 /* ---------- bosses: gentle, telegraphed, and they get sleepy ---------- */
 function makeBoss(kind) {
@@ -3421,8 +3301,9 @@ function buildStatic() {
   if (!ISLANDS.length) return;
   buildWaterTile();
   const q = Math.min(2, Math.max(0.5, VIEW.s * VIEW.dpr));
-  const c0 = document.createElement('canvas'); c0.width = Math.ceil(W * q); c0.height = Math.ceil(H * q);
-  const c = c0.getContext('2d'); c.scale(q, q);
+  const c0 = STATIC || document.createElement('canvas'), tw = Math.ceil(W * q), th = Math.ceil(H * q);   // reuse one canvas: mobile resizes fire often
+  if (c0.width !== tw || c0.height !== th) { c0.width = tw; c0.height = th; }
+  const c = c0.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, tw, th); c.scale(q, q);
   drawWaterDecor(c); drawShore(c); ISLANDS.forEach(I => drawIsland(c, I));
   STATIC = c0;
 }
@@ -3676,15 +3557,19 @@ function drawHand(c, x, y, t) {
 /* =====================================================================
    THE FRAME
    ===================================================================== */
+const RCACHE = { pat: null, tile: null, bg: null, key: '' };
 function render(t) {
   const { dpr, s, cw, ch } = VIEW;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const bg = ctx.createLinearGradient(0, 0, 0, ch); bg.addColorStop(0, WORLD.water[0]); bg.addColorStop(1, WORLD.water[1]);
-  ctx.fillStyle = bg; ctx.fillRect(0, 0, cw, ch);
+  const gk = WORLD.water[0] + WORLD.water[1] + ch;
+  if (RCACHE.key !== gk) { RCACHE.key = gk; RCACHE.bg = ctx.createLinearGradient(0, 0, 0, ch); RCACHE.bg.addColorStop(0, WORLD.water[0]); RCACHE.bg.addColorStop(1, WORLD.water[1]); }
+  ctx.fillStyle = RCACHE.bg; ctx.fillRect(0, 0, cw, ch);
   const shx = G && G.shake ? (Math.random() - 0.5) * G.shake * 2 : 0, shy = G && G.shake ? (Math.random() - 0.5) * G.shake * 2 : 0;
   ctx.setTransform(dpr * s, 0, 0, dpr * s, (-VIEW.camX * s + shx) * dpr, (-VIEW.camY * s + shy) * dpr);
   if (WATER_TILE) {
-    const vx = VIEW.camX, vy = VIEW.camY, vw = cw / s, vh = ch / s, pat = ctx.createPattern(WATER_TILE, 'repeat');
+    const vx = VIEW.camX, vy = VIEW.camY, vw = cw / s, vh = ch / s;
+    if (RCACHE.tile !== WATER_TILE) { RCACHE.tile = WATER_TILE; RCACHE.pat = ctx.createPattern(WATER_TILE, 'repeat'); }
+    const pat = RCACHE.pat;
     ctx.fillStyle = pat;
     [[t * 14, t * 6, 1], [-t * 9, t * 11 + 90, 0.6]].forEach(([dx, dy, a]) => { ctx.save(); ctx.globalAlpha = a; ctx.translate(dx % 220, dy % 220); ctx.fillRect(vx - 240, vy - 240, vw + 480, vh + 480); ctx.restore(); });
   }
@@ -3961,17 +3846,6 @@ function hullDeco(c, skin, t) {
   } else if (d === 'tub') { c.fillStyle = 'rgba(255,255,255,.95)'; [[-30, -22], [-10, -26], [10, -25], [28, -20], [-26, 22], [0, 26], [24, 21]].forEach(([x, y], i) => { c.beginPath(); c.arc(x, y, 6 + Math.sin(t * 3 + i) * 1.5, 0, 7); c.fill(); }); }
 }
 
-function drawAvatar(c, x, y, r, p, t) {
-  c.save();
-  c.fillStyle = 'rgba(0,0,0,.18)'; c.beginPath(); c.arc(x, y + 3, r + 4, 0, 7); c.fill();
-  c.fillStyle = '#fff'; c.beginPath(); c.arc(x, y, r + 4, 0, 7); c.fill();
-  c.beginPath(); c.arc(x, y, r, 0, 7); c.closePath(); c.fillStyle = p.color; c.fill();
-  const img = avatarImg(p);
-  if (img) { c.save(); c.clip(); const s = Math.max((r * 2) / img.naturalWidth, (r * 2) / img.naturalHeight); c.drawImage(img, x - img.naturalWidth * s / 2, y - img.naturalHeight * s / 2, img.naturalWidth * s, img.naturalHeight * s); c.restore(); }
-  else { c.fillStyle = '#fff'; c.font = `${Math.round(r * 1.05)}px ${FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(initials(p.name), x, y + r * 0.08); }
-  c.restore();
-  drawHat(c, p.hat || 'captain', x, y, r, t);
-}
 function drawHat(c, id, x, y, r, t) {
   if (id === 'none') return;
   c.save(); c.translate(x, y - r - 2);
@@ -4179,54 +4053,6 @@ function drawDuck(c, x, y, s, face, ph, o = {}) {
   c.restore();
 }
 function prankLook(d) { const L = G ? G.L : 1; const subtle = (G && G.mode === 'grown') || L >= 25; return subtle ? '#ffbf3f' : '#ff5a4e'; }
-function drawDuckEntity(c, d, t) {
-  const seed = d.seed || 0, o = { gold: d.gold, prank: d.prank, t, blink: ((t + seed * 1.7) % 3.4) < 0.12, tuft: d.tuft || 0, mood: 'calm' };
-  if (d.prank) o.prankBody = prankLook(d);
-  let y = d.y, s = 1.3 * (d.size || 1), face = d.face, ph = d.ph;
-  if (d.state === 'walk') {
-    o.walk = true;
-    if (d.prank) { ph = d.t * 16; y -= Math.abs(Math.sin(ph)) * 1.5; }
-    else { o.rot = Math.sin(ph) * 0.13; o.sq = 1 + Math.abs(Math.sin(ph)) * 0.07; y -= Math.abs(Math.sin(ph)) * 2.5; }
-  } else if (d.state === 'teeter') {
-    const I = ISLANDS[d.isl]; if (I && I.n.x) face = Math.sign(I.n.x);
-    if (d.prank) { o.walk = true; ph = t * 16; y -= Math.abs(Math.sin(t * 16)) * 2; }
-    else { o.rot = Math.sin(t * 9 + seed) * 0.22 + 0.12; o.flap = Math.abs(Math.sin(t * 22 + seed)); o.mood = 'panic'; o.sweat = true; o.open = 0.5 + 0.5 * Math.sin(t * 10); }
-  } else if (d.state === 'hop') {
-    const k = Math.min(1, d.t / 0.45); o.air = true; o.sq = k < 0.15 ? 1.25 : 0.82; o.rot = k * 1.4;
-    if (!d.prank) { o.mood = 'panic'; o.flap = Math.abs(Math.sin(t * 30)); o.open = 1; }
-  } else if (d.state === 'fly') {
-    const k = Math.min(1, d.t / (d.fd || 0.3)); o.air = true; o.rot = k * Math.PI * 2; o.flap = 0.6; if (!d.prank) o.mood = 'happy';
-  } else if (d.state === 'swim') {
-    o.swim = true; s = 1.2 * (d.size || 1); o.rot = Math.sin(t * 3 + seed) * 0.08;
-    if (d.prank) y += Math.min(16, d.t * 12); else o.mood = d.t > 2.5 ? 'grumpy' : 'worry';
-  }
-  if (d.state === 'swim' && !d.prank && d.t > (G && G.P.waits ? 7.5 : 3.5) && Math.floor(t * 6) % 2) c.globalAlpha = 0.4;
-  if (d.prank && d.state === 'swim') c.globalAlpha = Math.max(0, 1 - d.t / 1.4);
-  if (d.prank && G && charmLv('detector') && d.state !== 'swim') { c.strokeStyle = `rgba(255,80,70,${0.5 + 0.4 * Math.sin(t * 8)})`; c.lineWidth = 4; c.beginPath(); c.arc(d.x, y - 6, 26, 0, 7); c.stroke(); }
-  drawDuck(c, d.x, y, s, face, ph, o);
-  c.globalAlpha = 1;
-  if (d.state === 'teeter') {
-    const wob = Math.sin(t * 18) * 3, bx = d.x + wob, by = d.y - 52;
-    c.fillStyle = d.prank ? '#6f5bd6' : '#fff'; c.beginPath(); c.arc(bx, by, 13, 0, 7); c.fill();
-    c.font = `22px ${FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle';
-    c.fillStyle = d.prank ? '#fff' : '#ff5a4e'; c.fillText(d.prank ? '?' : '!', bx, by + 1);
-  }
-}
-function drawBeachDuck(c, d, t) {
-  if (d.hopD) { const k = clamp((d.t - (d.hopDelay || 0)) / d.hopD, 0, 1); drawDuck(c, d.x, d.y, 1.12, d.face || 1, d.ph, { gold: d.gold, air: k > 0 && k < 1, rot: k * Math.PI * 2, sq: k > 0.9 ? 1.2 : 0.9, mood: 'happy', flap: 0.7, t }); return; }
-  if (d.seed == null) { d.seed = Math.random() * 10; d.tuft = Math.random() < 0.3 ? 1 + (Math.random() * 2 | 0) : 0; }
-  const seed = d.seed, moving = Math.hypot(d.tx - d.x, d.ty - d.y) > 3;
-  let y = d.y, rot = 0, sq = 1, mood = 'happy', face = d.face;
-  if (G && G.won) {
-    const k = (t * 1.6 + seed) % 1; y -= Math.sin(k * Math.PI) * 26; sq = k < 0.1 || k > 0.9 ? 1.25 : 0.9;
-    if ((seed | 0) % 3 === 0 && k > 0.2 && k < 0.8) rot = (k - 0.2) / 0.6 * Math.PI * 2;
-  } else if (!moving) {
-    const k = (t * 0.8 + seed) % 2;
-    if (k < 0.35) { y -= Math.sin(k / 0.35 * Math.PI) * 8; sq = 0.92; }
-    face = Math.sin(t * 0.5 + seed * 3) > 0 ? 1 : -1; mood = Math.sin(t * 0.7 + seed) > 0.4 ? 'happy' : 'calm';
-  }
-  drawDuck(c, d.x, y, 1.12, face, d.ph, { gold: d.gold, walk: moving, rot, sq, mood, tuft: d.tuft, blink: ((t + seed) % 3) < 0.12, t });
-}
 
 /* ---------- creatures ---------- */
 function cEyes(c, xs, y, r, mood, skin, look, t, glossy) {
@@ -5333,7 +5159,7 @@ cv.addEventListener('pointermove', e => {
   if (d > JOY.R * 1.4) { JOY.bx = JOY.x - dx / d * JOY.R * 1.4; JOY.by = JOY.y - dy / d * JOY.R * 1.4; }
 });
 const pointerEnd = e => { if (e.pointerId === JOY.id) JOY.id = null; if (e.pointerId === TAP.id) TAP.id = null; };
-cv.addEventListener('pointerup', pointerEnd); cv.addEventListener('pointercancel', pointerEnd);
+cv.addEventListener('pointerup', pointerEnd); cv.addEventListener('pointercancel', pointerEnd); cv.addEventListener('lostpointercapture', pointerEnd);
 
 function readInput() {
   let x = 0, y = 0;
@@ -5802,7 +5628,8 @@ $('btn-retry').addEventListener('click', () => { SFX.click(); restartLevel(); })
 $('btn-lose-shop').addEventListener('click', () => { SFX.click(); G = null; renderShop(); });
 $('btn-lose-home').addEventListener('click', () => { SFX.click(); leaveGame(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden) { pauseGame(); persist(); Music.stop(); } });
-document.addEventListener('pointerdown', () => Sound.init(), { once: true });
+document.addEventListener('pointerdown', () => Sound.init(), true);   // every tap re-unlocks audio after the app was in the background
+document.addEventListener('keydown', () => Sound.init(), true);
 
 /* ---------- main loop ---------- */
 let lastNow = performance.now(), CLOCK = 0;
@@ -6464,7 +6291,7 @@ selectProfile = function (p, quiet) {
 };
 const _openEditV12 = openEdit;
 openEdit = function (isNew) {
-  if (isNew) return openSetup();
+  if (isNew) { openSetup(); SETUP.fresh = true; return; }
   _openEditV12(isNew);
   EDIT.view = PROFILE.view || 'whole';
   const box = $('edit-view'); box.innerHTML = '';
@@ -6556,7 +6383,10 @@ $('setup-next').addEventListener('click', () => {
 });
 $('setup-back').addEventListener('click', () => {
   SFX.click();
-  if (SETUP.step === 0) { renderPlayers(); return; }
+  if (SETUP.step === 0) {   // cancelling a brand-new player removes it instead of leaving a blank card
+    if (SETUP.fresh && SAVE.profiles.includes(PROFILE)) { SAVE.profiles = SAVE.profiles.filter(x => x !== PROFILE); PROFILE = null; SAVE.current = null; persist(); }
+    renderPlayers(); return;
+  }
   SETUP.step--; renderSetup();
 });
 $('setup-photo').addEventListener('change', e => {
@@ -7251,6 +7081,40 @@ renderYard = function (tab) {
     const f = b.querySelector('.price'); if (f) { f.className = 'price'; f.innerHTML = `${icon('lock')}Pirate prize`; }
   });
 };
+/* =====================================================================
+   v1.3.2 SAFETY NET — a bad frame can't freeze the game, and progress
+   is saved every few seconds instead of only on pause/win/leave.
+   ===================================================================== */
+let FRAME_ERRS = 0, HALTED = false, SAVE_T = 0, SAVE_SIG = '';
+function noteError(err) {
+  try { localStorage.setItem('quackHarbor.lastError', JSON.stringify({ t: Date.now(), ver: '1.3.2', level: G && G.L, msg: String((err && err.message) || err), stack: String((err && err.stack) || '').slice(0, 1500) })); } catch (e) {}
+}
+function failSafe() {
+  if (HALTED) return; HALTED = true;
+  try { Music.stop(); } catch (e) {} persist();
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed;inset:0;z-index:99;display:grid;place-items:center;background:rgba(6,50,75,.86);padding:24px';
+  el.innerHTML = '<div class="card" style="text-align:center"><h2>Oops, the boat sprang a leak!</h2><p>Your coins are safe. Tap below to hop back in.</p><button class="btn big go" id="fs-reload">Reload the harbor</button></div>';
+  document.body.append(el); document.getElementById('fs-reload').onclick = () => location.reload();
+}
+function autosave(dt) {
+  SAVE_T += dt; if (SAVE_T < 8 || !PROFILE) return; SAVE_T = 0;
+  const sig = `${PROFILE.coins}|${PROFILE.gems}|${PROFILE.xp}|${PROFILE.ducks}|${PROFILE.level}`;
+  if (sig !== SAVE_SIG) { SAVE_SIG = sig; persist(); }
+}
+const _frameV132 = frame;
+frame = function (now) {
+  if (HALTED) return;
+  const before = CLOCK;
+  try { _frameV132(now); FRAME_ERRS = 0; autosave(CLOCK - before); }
+  catch (err) {
+    if (++FRAME_ERRS === 1) noteError(err);
+    try { if (ctx.reset) ctx.reset(); else ctx.setTransform(1, 0, 0, 1, 0, 0); } catch (e) {}   // drop any save()/clip left open by the failed draw
+    if (FRAME_ERRS > 45) failSafe();   // only if every frame keeps failing (~¾ second)
+  }
+};
+addEventListener('error', e => noteError(e.error || e.message));
+addEventListener('pagehide', () => persist());
 
 </script>
 <script>if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));</script>

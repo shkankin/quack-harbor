@@ -1,8 +1,13 @@
 // Quack Harbor service worker. Bump CACHE on every release.
-const CACHE = 'quack-harbor-v1.3';
+const CACHE = 'quack-harbor-v1.3.2';
 const FONTS = 'quack-harbor-fonts';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png'];
-self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
+// the page itself must cache; a missing icon must not block the install
+self.addEventListener('install', e => {
+  e.waitUntil(caches.open(CACHE)
+    .then(c => c.addAll(['./', 'index.html']).then(() => Promise.all(SHELL.slice(2).map(u => c.add(u).catch(() => {})))))
+    .then(() => self.skipWaiting()));
+});
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k.startsWith('quack-harbor-v') && k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
@@ -13,7 +18,7 @@ self.addEventListener('fetch', e => {
     if (req.mode === 'navigate' || url.pathname.endsWith('/art/art.json')) {
       // online: always the newest page and art list; offline: the saved copy
       const key = req.mode === 'navigate' ? 'index.html' : req;
-      e.respondWith(fetch(req).then(r => { if (r.ok) { const copy = r.clone(); caches.open(CACHE).then(c => c.put(key, copy)); } return r; }).catch(() => caches.match(key)));
+      e.respondWith(fetch(req).then(r => { if (r.ok) { const copy = r.clone(); caches.open(CACHE).then(c => c.put(key, copy)); } return r; }).catch(() => caches.match(key).then(hit => hit || caches.match('index.html')).then(hit => hit || Response.error())));
     } else if (url.pathname.includes('/art/')) {
       // custom art: show the saved copy right away, refresh it in the background
       e.respondWith(caches.open(CACHE).then(async c => { const hit = await c.match(req); const net = fetch(req).then(r => { if (r.ok) c.put(req, r.clone()); return r; }).catch(() => hit || Response.error()); return hit || net; }));
