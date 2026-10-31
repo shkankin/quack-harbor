@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#1fb0d3">
-<meta name="app-version" content="1.3.2">
+<meta name="app-version" content="1.4.1">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -448,6 +448,19 @@ body.gutters .act-super{position:fixed;left:max(12px,calc(env(safe-area-inset-le
 .pirate-card .btn{font-size:24px;}
 #bonus-sub{margin:0;color:var(--muted);font-size:18px;text-align:center;}
 #scr-bonus .card{gap:14px;}
+#hud{z-index:6;}
+#pad{pointer-events:none;}
+#pad .act,#pad button{pointer-events:auto;}
+.players-tools{display:flex;justify-content:center;margin-top:6px;}
+.players-tools .link{color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.45);}
+.players.managing .pcard:not(.add){animation:wiggle .35s ease-in-out infinite alternate;}
+.players.managing .pcard.add{display:none;}
+.pcard .del-x{position:absolute;top:-8px;right:-8px;width:40px;height:40px;border-radius:50%;background:var(--coral);color:#fff;font-size:24px;font-weight:900;display:grid;place-items:center;box-shadow:0 3px 0 var(--coral-d);}
+.pcard{position:relative;}
+@keyframes wiggle{from{transform:rotate(-1.5deg);}to{transform:rotate(1.5deg);}}
+.modal{position:fixed;inset:0;z-index:40;display:grid;place-items:center;background:rgba(6,50,75,.6);padding:16px;}
+.modal .card{text-align:center;justify-items:center;}
+.modal .row{display:flex;gap:12px;justify-content:center;}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;}}
 </style>
 </head>
@@ -485,7 +498,8 @@ body.gutters .act-super{position:fixed;left:max(12px,calc(env(safe-area-inset-le
     <div class="logo" aria-label="Quack Harbor"><span class="l1">Quack</span><span class="l2">Harbor</span></div>
     <p class="tag">Who's sailing today?</p>
     <div class="players" id="players-list"></div>
-    <p class="ver">Quack Harbor v1.3.2</p>
+    <div class="players-tools"><button class="link" id="btn-manage">Remove a player</button></div>
+    <p class="ver">Quack Harbor v1.4.1</p>
   </div>
 </section>
 
@@ -542,6 +556,14 @@ body.gutters .act-super{position:fixed;left:max(12px,calc(env(safe-area-inset-le
   </div>
 </section>
 
+<div class="modal" id="del-modal" hidden>
+  <div class="card">
+    <div class="avatar lg" id="del-avatar"></div>
+    <h2 id="del-title">Remove this player?</h2>
+    <p>All their coins, gems, stars and upgrades will be gone for good.</p>
+    <div class="row"><button class="btn" id="del-keep">Keep</button><button class="btn warm" id="del-go">Remove</button></div>
+  </div>
+</div>
 <section class="screen" id="scr-bonus" hidden>
   <div class="card">
     <h2 id="bonus-title">Bonus clear!</h2>
@@ -620,6 +642,7 @@ body.gutters .act-super{position:fixed;left:max(12px,calc(env(safe-area-inset-le
 
 <section class="screen" id="scr-daily" hidden>
   <div class="card">
+    <button class="back" data-back aria-label="Back">‹</button>
     <h2>Daily Treasure</h2>
     <p>Come back every day. Day 7 has the biggest prize!</p>
     <div class="daily" id="daily-grid"></div>
@@ -792,7 +815,7 @@ function loadSave() {
     const s = JSON.parse(localStorage.getItem(STORE_KEY));
     if (s && Array.isArray(s.profiles)) return s;
   } catch (e) { /* storage blocked or empty */ }
-  return { profiles: CONFIG.players.map((p, i) => newProfile(p, i)), current: null, sound: true };
+  return { profiles: CONFIG.players.slice(0, 1).map((p, i) => newProfile(p, i)), current: null, sound: true };
 }
 const SAVE = loadSave();
 function persist() { try { localStorage.setItem(STORE_KEY, JSON.stringify(SAVE)); } catch (e) { /* not fatal */ } }
@@ -1821,13 +1844,38 @@ function hitBoat() {
 /* ---------- boat ---------- */
 const canAct = () => G && !G.paused && !G.over && !G.won && G.boat.hitT <= 0;
 
+/* caught in the middle of a whirlpool: spin round, lose a duck, get flung out */
+function startWhirl(b, p) {
+  const little = G.mode === 'little';
+  b.whirlT = little ? 0.6 : 1.15; b.whirlP = p; b.whirlA = Math.atan2(b.y - p.y, b.x - p.x); b.spd = 0; b.vx = b.vy = 0; G.target = null;
+  SFX.spin(); SFX.splash(); G.shake = Math.max(G.shake || 0, 6); say(p.x, p.y - 80, 'Whirlpooled!', '#fff', 36, 1.2);
+  const spill = little ? 0 : G.mode === 'grown' ? b.seats.filter(s => !s.prank).length : Math.min(1, b.seats.filter(s => !s.prank).length);
+  if (spill && !(upLevel(PROFILE, 'sticky') > 0)) {
+    for (let i = 0; i < spill; i++) {
+      const k = b.seats.map(s => !s.prank).lastIndexOf(true); if (k < 0) break;
+      const s = b.seats.splice(k, 1)[0], a = rand(0, 7);
+      G.ducks.push({ isl: 0, state: 'swim', x: p.x + Math.cos(a) * 90, y: p.y + Math.sin(a) * 90, vx: Math.cos(a) * 120, vy: Math.sin(a) * 120, t: 0, face: 1, gold: s.gold, pers: s.pers, seed: rand(0, 99), ph: 0 });
+    }
+    say(b.x, b.y - 110, spill > 1 ? 'Ducks overboard!' : 'Duck overboard!', '#ffd6d0', 28, 1.4);
+  }
+}
+function updateWhirl(b, dt) {
+  const p = b.whirlP; b.whirlT -= dt; b.whirlA += 11 * dt;
+  b.x = p.x + Math.cos(b.whirlA) * 30; b.y = p.y + Math.sin(b.whirlA) * 24; b.a = b.whirlA + Math.PI / 2; b.vx = b.vy = 0; b.spd = 0;
+  if (Math.random() < dt * 20) burst(b.x, b.y, 2, { col: G.world.id === 'candy' ? ['#fff', '#c98a5a'] : ['#fff', '#bdf3ff'], min: 30, max: 120 });
+  if (b.whirlT <= 0 || b.jumpT > 0) {   // fling out (a jump breaks free early)
+    b.whirlT = 0; b.poolT = 1.4; b.a = b.whirlA; b.vx = Math.cos(b.a) * 560; b.vy = Math.sin(b.a) * 560; b.spd = G.S.speed * 1.4;
+    b.x = p.x + Math.cos(b.a) * (p.r + 12); b.y = p.y + Math.sin(b.a) * (p.r + 12);
+    SFX.boing(); burst(b.x, b.y, 14, { col: ['#fff', '#bdf3ff'], min: 80, max: 220 });
+  }
+}
 function updateBoat(dt) {
   const b = G.boat, S = G.S, inp = G.input;
   for (const k in b.cd) b.cd[k] = Math.max(0, b.cd[k] - dt);
   b.invT = Math.max(0, b.invT - dt); b.turboT = Math.max(0, b.turboT - dt); b.spinT = Math.max(0, b.spinT - dt); b.fullT -= dt; b.bumpT -= dt;
   if (b.jumpT > 0) { b.jumpT -= dt; if (b.jumpT <= 0) { b.landT = 0.25; SFX.land(); burst(b.x, b.y, 14, { col: ['#fff', '#bdf3ff'] }); ring(b.x, b.y, 'rgba(255,255,255,.8)', 0.5, 60); } }
   if (b.hitT > 0) { b.hitT -= dt; b.spd *= Math.pow(0.05, dt); }
-  else if (!G.won && !(b.beamT > 0)) {
+  else if (!G.won && !(b.beamT > 0) && !(b.whirlT > 0)) {
     const mag = Math.min(1, Math.hypot(inp.x, inp.y));
     if (mag > 0.12) { const want = Math.atan2(inp.y, inp.x), turn = (b.turboT > 0 ? 5 : 7.5) * (G.S.turn || 1) * dt; b.a += clamp(angDiff(b.a, want), -turn, turn); }
     const target = b.turboT > 0 ? S.speed * 1.75 : S.speed * (mag > 0.12 ? mag : 0);
@@ -1839,14 +1887,17 @@ function updateBoat(dt) {
   if (b.hitT > 0) { b.vx *= Math.pow(0.05, dt); b.vy *= Math.pow(0.05, dt); }
   b.x += b.vx * dt; b.y += b.vy * dt;
   // whirlpools tug and twirl
-  for (const p of POOLS) {
-    const d = dist(b.x, b.y, p.x, p.y);
-    if (d < p.pull && d > 1 && b.jumpT <= 0 && G.freezeT <= 0) {
-      const k = 1 - d / p.pull, esc = b.turboT > 0 ? 0.25 : 1, ux = (p.x - b.x) / d, uy = (p.y - b.y) / d;
-      b.x += (ux * 120 - uy * 150) * k * dt * esc; b.y += (uy * 120 + ux * 150) * k * dt * esc;
-      b.a += 1.6 * k * dt * esc;
-      p.sayT -= dt;
-      if (d < p.r + 10 && p.sayT <= 0) { p.sayT = 3; say(b.x, b.y - 70, 'Wheee! Try TURBO', '#fff', 26); SFX.spin(); }
+  b.poolT = Math.max(0, (b.poolT || 0) - dt);
+  if (b.whirlT > 0) updateWhirl(b, dt);
+  else for (const p of POOLS) {
+    const d = dist(b.x, b.y, p.x, p.y), str = G.mode === 'little' ? 0.55 : G.mode === 'grown' ? 1.25 : 1;
+    p.sayT -= dt;
+    if (d < p.pull && d > 1 && b.jumpT <= 0 && G.freezeT <= 0 && b.poolT <= 0) {
+      const k = 1 - d / p.pull, kk = (0.4 * k + 0.6 * k * k) * str, esc = b.turboT > 0 ? 0.3 : 1, ux = (p.x - b.x) / d, uy = (p.y - b.y) / d;
+      b.x += (ux * 260 - uy * 230) * kk * dt * esc; b.y += (uy * 260 + ux * 230) * kk * dt * esc;
+      b.a += 2.6 * kk * dt * esc;
+      if (k > 0.35 && p.sayT <= 0) { p.sayT = 4; say(b.x, b.y - 70, 'Whirlpool! TURBO or JUMP!', '#fff', 26); SFX.warn(); }
+      if (d < p.r) { startWhirl(b, p); break; }
     }
   }
   // drifting logs and ice floes: bump into them, or jump right over
@@ -6526,7 +6577,7 @@ function drawBonusHud(c, B, t) {
   const sec = Math.max(0, Math.ceil(B.left)), low = B.phase === 'play' && sec <= 5;
   txt(c, 'TIME', 800, 34, 26, '#ffe14d', 'rgba(120,30,20,.9)', 7);
   txt(c, String(sec), 800, 80, low ? 64 + Math.sin(t * 20) * 4 : 58, low ? '#ff6a55' : '#fff', 'rgba(120,30,20,.9)', 10);
-  if (B.phase === 'play') { c.fillStyle = 'rgba(255,255,255,.9)'; c.beginPath(); c.arc(1550, 58, 30, 0, 7); c.fill(); c.strokeStyle = '#5d7f93'; c.lineWidth = 6; c.lineCap = 'round'; c.beginPath(); c.moveTo(1539, 47); c.lineTo(1561, 69); c.moveTo(1561, 47); c.lineTo(1539, 69); c.stroke(); }
+  if (B.phase !== 'end') { c.fillStyle = 'rgba(255,255,255,.9)'; c.beginPath(); c.arc(1550, 58, 30, 0, 7); c.fill(); c.strokeStyle = '#5d7f93'; c.lineWidth = 6; c.lineCap = 'round'; c.beginPath(); c.moveTo(1539, 47); c.lineTo(1561, 69); c.moveTo(1561, 47); c.lineTo(1539, 69); c.stroke(); }
   if (B.phase === 'intro') {
     const k = Math.min(1, B.t / 0.35), info = BONUS_INFO[B.kind];
     c.fillStyle = 'rgba(10,40,70,.55)'; c.fillRect(0, 300, W, 420);
@@ -6552,9 +6603,9 @@ frame = function (now) {
 cv.addEventListener('pointerdown', e => {
   if (!BONUS || CUR) return;
   const v = bonusView(), p = { x: (e.clientX - v.ox) / v.s, y: (e.clientY - v.oy) / v.s };
+  if (BONUS.phase === 'end') return;
+  if (dist(p.x, p.y, 1550, 58) < 50) { endBonus(BONUS); return; }
   if (BONUS.phase === 'intro') { if (BONUS.t > 0.8) startBonusPlay(BONUS); return; }
-  if (BONUS.phase !== 'play') return;
-  if (dist(p.x, p.y, 1550, 58) < 44) { endBonus(BONUS); return; }
   BONUS_GAMES[BONUS.kind].tap(BONUS, p);
 });
 function showBonusResult() {
@@ -7087,7 +7138,7 @@ renderYard = function (tab) {
    ===================================================================== */
 let FRAME_ERRS = 0, HALTED = false, SAVE_T = 0, SAVE_SIG = '';
 function noteError(err) {
-  try { localStorage.setItem('quackHarbor.lastError', JSON.stringify({ t: Date.now(), ver: '1.3.2', level: G && G.L, msg: String((err && err.message) || err), stack: String((err && err.stack) || '').slice(0, 1500) })); } catch (e) {}
+  try { localStorage.setItem('quackHarbor.lastError', JSON.stringify({ t: Date.now(), ver: '1.4', level: G && G.L, msg: String((err && err.message) || err), stack: String((err && err.stack) || '').slice(0, 1500) })); } catch (e) {}
 }
 function failSafe() {
   if (HALTED) return; HALTED = true;
@@ -7115,6 +7166,107 @@ frame = function (now) {
 };
 addEventListener('error', e => noteError(e.error || e.message));
 addEventListener('pagehide', () => persist());
+/* =====================================================================
+   v1.4 — remove players, prank ducks that stun, whirlpools, and better rain
+   ===================================================================== */
+
+/* ---------- removing players from the player screen ---------- */
+let MANAGE = false, DEL_P = null;
+const _renderPlayersV14 = renderPlayers;
+renderPlayers = function () {
+  _renderPlayersV14();
+  const list = $('players-list'), btn = $('btn-manage');
+  if (!SAVE.profiles.length) MANAGE = false;
+  list.classList.toggle('managing', MANAGE);
+  btn.hidden = !SAVE.profiles.length; btn.textContent = MANAGE ? 'Done' : 'Remove a player';
+  if (MANAGE) list.querySelectorAll('.pcard:not(.add)').forEach(card => { const x = document.createElement('span'); x.className = 'del-x'; x.textContent = '✕'; card.append(x); });
+};
+$('btn-manage').addEventListener('click', () => { SFX.click(); MANAGE = !MANAGE; renderPlayers(); });
+$('players-list').addEventListener('click', e => {   // capture: in remove mode a tap asks to remove instead of starting
+  if (!MANAGE) return;
+  const card = e.target.closest('.pcard'); if (!card || card.classList.contains('add')) return;
+  e.stopPropagation(); e.preventDefault();
+  const i = [...$('players-list').querySelectorAll('.pcard:not(.add)')].indexOf(card), p = SAVE.profiles[i]; if (!p) return;
+  DEL_P = p; paintAvatarEl($('del-avatar'), p); $('del-title').textContent = `Remove ${p.name}?`; $('del-modal').hidden = false; SFX.click();
+}, true);
+$('del-keep').addEventListener('click', () => { SFX.click(); $('del-modal').hidden = true; DEL_P = null; });
+$('del-go').addEventListener('click', () => {
+  if (DEL_P) { SAVE.profiles = SAVE.profiles.filter(x => x !== DEL_P); if (SAVE.current === DEL_P.id) SAVE.current = null; if (PROFILE === DEL_P) PROFILE = null; persist(); SFX.splash(); }
+  DEL_P = null; $('del-modal').hidden = true; renderPlayers();
+});
+
+/* ---------- tossing a Prank Duck: BOING stuns creatures around you, and it goes BOOM where it lands ---------- */
+function stunBlast(x, y, R) {
+  let n = 0;
+  G.lurkers.forEach(h => { if (napping(h)) return; const p = lurkerSpot(h); if (dist(x, y, p.x, p.y) < R + 30) { stunLurker(h, 'dizzyT', 2.6, { x, y }); say(h.x, h.y - 50, 'Dizzy!', '#fff', 28); n++; } });
+  const B = G.boss;
+  if (B && B.state !== 'asleep' && B.state !== 'intro' && dist(x, y, B.x, B.y) < R + B.r) { bossDizzy(1.6); n++; }
+  const S = G.pirates;
+  if (S && !S.sinking && S.state !== 'enter' && dist(x, y, S.x, S.y) < R + 170) { S.cd = Math.max(S.cd, 2.5); S.hitT = Math.max(S.hitT, 0.8); say(S.x + 100, S.y - 170, 'Squawk?!', '#fff', 32); n++; }
+  return n;
+}
+const _ejectPranksV14 = ejectPranks;
+ejectPranks = function (how) {
+  const b = G.boat; if (!b.seats.some(s => s.prank)) return _ejectPranksV14(how);
+  const n0 = G.flingers.length; _ejectPranksV14(how);
+  G.flingers.slice(n0).forEach(f => { f.boom = true; });
+  const R = 200, n = stunBlast(b.x, b.y, R);
+  ring(b.x, b.y, 'rgba(255,214,90,.95)', 0.6, R); ring(b.x, b.y, 'rgba(255,255,255,.9)', 0.8, R * 0.7);
+  burst(b.x, b.y, 22, { type: 'spark', col: ['#ffe14d', '#fff', '#ffb02e'], min: 120, max: R * 2 });
+  if (n) say(b.x, b.y - 125, 'Prank stun!', '#ffc531', 36, 1.2);
+};
+const _updatePranksV14 = updatePranks;
+updatePranks = function (dt) {
+  const before = G.flingers.slice(); _updatePranksV14(dt);
+  for (const f of before) if (f.dead && f.boom) {
+    G.booms.push({ x: f.x, y: f.y, t: 0 }); SFX.kaboom(); G.shake = Math.max(G.shake || 0, 9);
+    burst(f.x, f.y, 22, { col: ['#5d5d66', '#8a8a94', '#ffb000', '#ff6a1f', '#fff'], min: 100, max: 320, size: [4, 9] });
+    if (stunBlast(f.x, f.y, 170)) say(f.x, f.y - 90, 'KA-STUN!', '#ffc531', 34);
+  }
+};
+
+/* ---------- rain: random drops at different depths, gusty wind, ripples on the water ---------- */
+const RAIN = { drops: [], ripples: [], w: 0, h: 0, t: 0, rt: 0, acc: 0 };
+function rainDrop(cw, ch, anywhere) {
+  const near = Math.random() < 0.3;
+  return { x: rand(-160, cw + 20), y: anywhere ? rand(-40, ch) : rand(-180, -20), v: near ? rand(950, 1250) : rand(560, 820),
+    len: near ? rand(20, 30) : rand(9, 17), a: near ? rand(0.35, 0.6) : rand(0.16, 0.36), lw: near ? rand(1.6, 2.4) : rand(0.9, 1.4) };
+}
+const _drawWeatherScreenV14 = drawWeatherScreen;
+drawWeatherScreen = function (c, t) {
+  if (!G || G.weather !== 'rain') return _drawWeatherScreenV14(c, t);
+  const { cw, ch } = VIEW;
+  if (RAIN.w !== cw || RAIN.h !== ch || !RAIN.drops.length) { RAIN.w = cw; RAIN.h = ch; RAIN.drops = Array.from({ length: Math.round(clamp(cw * ch / 7000, 60, 170)) }, () => rainDrop(cw, ch, true)); }
+  const dt = G.paused ? 0 : clamp(t - RAIN.t, 0, 0.05); RAIN.t = t;
+  const wind = 0.16 + Math.sin(t * 0.37) * 0.07 + Math.sin(t * 1.3) * 0.03;
+  c.lineCap = 'round';
+  for (const d of RAIN.drops) {
+    d.y += d.v * dt; d.x += d.v * wind * dt;
+    if (d.y > ch + 30 || d.x > cw + 60) Object.assign(d, rainDrop(cw, ch, false));
+    c.strokeStyle = `rgba(215,232,255,${d.a.toFixed(2)})`; c.lineWidth = d.lw;
+    c.beginPath(); c.moveTo(d.x, d.y); c.lineTo(d.x - d.len * wind, d.y - d.len); c.stroke();
+  }
+};
+const _drawWorldUnderV14 = drawWorldUnder;
+drawWorldUnder = function (c, t) {
+  _drawWorldUnderV14(c, t);
+  if (!G || G.weather !== 'rain') return;
+  const dt = G.paused ? 0 : clamp(t - RAIN.rt, 0, 0.05); RAIN.rt = t;
+  RAIN.acc += dt * 38;
+  while (RAIN.acc >= 1) {
+    RAIN.acc--;
+    const V = viewRect(), x = rand(V.x, V.x + V.w), y = rand(Math.max(SHORE + 24, V.y), V.y + V.h);
+    if (!ISLANDS.some(I => x > I.l - 6 && x < I.r + 6 && y > I.t - 6 && y < I.b + 6)) RAIN.ripples.push({ x, y, t: 0, max: rand(0.45, 0.85), r: rand(9, 20) });
+  }
+  for (const r of RAIN.ripples) r.t += dt;
+  RAIN.ripples = RAIN.ripples.filter(r => r.t < r.max);
+  c.lineWidth = 1.6;
+  for (const r of RAIN.ripples) {
+    const k = r.t / r.max, s = r.r * (0.3 + k);
+    c.strokeStyle = `rgba(230,245,255,${(0.55 * (1 - k)).toFixed(2)})`; c.beginPath(); c.ellipse(r.x, r.y, s, s * 0.45, 0, 0, 7); c.stroke();
+    if (k < 0.25) { c.fillStyle = `rgba(230,245,255,${(0.7 * (1 - k * 4)).toFixed(2)})`; c.beginPath(); c.arc(r.x - 3, r.y - k * 36, 1.6, 0, 7); c.arc(r.x + 3, r.y - k * 30, 1.3, 0, 7); c.fill(); }
+  }
+};
 
 </script>
 <script>if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));</script>

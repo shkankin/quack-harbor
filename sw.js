@@ -1,5 +1,5 @@
 // Quack Harbor service worker. Bump CACHE on every release.
-const CACHE = 'quack-harbor-v1.3.2';
+const CACHE = 'quack-harbor-v1.4.1';
 const FONTS = 'quack-harbor-fonts';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png'];
 // the page itself must cache; a missing icon must not block the install
