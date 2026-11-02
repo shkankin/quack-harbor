@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#1fb0d3">
-<meta name="app-version" content="1.5">
+<meta name="app-version" content="1.5.1">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -279,12 +279,18 @@ body.gutters .act-jump .ic{width:36px;height:36px;}
 .act-super.full small{text-shadow:none;}
 @keyframes superGlow{50%{box-shadow:0 6px 0 var(--cdk),0 0 0 8px rgba(255,197,49,.45),0 0 30px rgba(255,197,49,.9);transform:scale(1.06);}}
 @media (max-height:560px){.pad-slots .act{width:64px;height:64px;}.pad-slots .act .ic{width:28px;height:28px;}.act-super{width:68px;height:68px;}}
-body.gutters #pad{flex-direction:column;align-items:center;justify-content:center;gap:8px;}
-body.gutters .pad-slots{gap:8px;}
-body.gutters .pad-slots .act{width:58px;height:58px;}
-body.gutters .pad-slots .act .ic{width:26px;height:26px;}
-body.gutters .pad-slots .act small{font-size:10px;}
-body.gutters .act-super{position:fixed;left:max(12px,calc(env(safe-area-inset-left,0px) + 8px));top:calc(70px + env(safe-area-inset-top,0px));width:70px;height:70px;}
+/* v1.5.1 phones sideways: SNES-style diamond on the right. Super on top, powers left / right / bottom, Jump underneath */
+body.gutters #pad{display:block;top:50%;bottom:auto;transform:translateY(-42%);width:134px;height:216px;padding:0;right:max(8px,calc(env(safe-area-inset-right,0px) + 6px));}
+body.gutters .pad-slots,body.gutters .pad-main{display:contents;}
+body.gutters #pad .act{position:absolute;width:52px;height:52px;margin:0;}
+body.gutters #pad .act .ic{width:24px;height:24px;}
+body.gutters #pad .act small{font-size:9.5px;}
+body.gutters #btn-super{left:41px;top:0;}
+body.gutters #slot-0{left:0;top:41px;}
+body.gutters #slot-1{left:82px;top:41px;}
+body.gutters #slot-2{left:41px;top:82px;}
+body.gutters #pad #btn-jump{left:31px;top:144px;width:72px;height:72px;}
+body.gutters #pad #btn-jump .ic{width:32px;height:32px;}
 .tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;background:#f0e4cc;border-radius:18px;padding:5px;}
 .tabs button{border:0;border-radius:14px;background:transparent;padding:10px 4px;font-family:var(--f-display);font-size:18px;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:6px;}
 .tabs button .ic{width:20px;height:20px;}
@@ -506,7 +512,7 @@ body.gutters .act-super{position:fixed;left:max(12px,calc(env(safe-area-inset-le
     <p class="tag">Who's sailing today?</p>
     <div class="players" id="players-list"></div>
     <div class="players-tools"><button class="link" id="btn-manage">Remove a player</button></div>
-    <p class="ver">Quack Harbor v1.5</p>
+    <p class="ver">Quack Harbor v1.5.1</p>
   </div>
 </section>
 
@@ -3386,13 +3392,21 @@ function drawTexts(c) {
    would get too small) zoom in and follow the boat, keeping it clear
    of the HUD and the thumb buttons.
    ===================================================================== */
+let SAFE_PROBE = null;
+function safeInsets() {
+  if (!SAFE_PROBE) { SAFE_PROBE = document.createElement('div'); SAFE_PROBE.style.cssText = 'position:fixed;visibility:hidden;pointer-events:none;padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)'; document.body.appendChild(SAFE_PROBE); }
+  const cs = getComputedStyle(SAFE_PROBE); return { l: parseFloat(cs.paddingLeft) || 0, r: parseFloat(cs.paddingRight) || 0 };
+}
 function resize() {
   const dpr = Math.min(2, window.devicePixelRatio || 1), cw = innerWidth, ch = innerHeight;
   cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr);
   const sFit = Math.min(cw / W, ch / H), small = sFit < 0.5, view = (typeof PROFILE !== 'undefined' && PROFILE && PROFILE.view) || SAVE.view || 'whole', follow = view === 'close', gutters = small && !follow && cw > ch;
   document.body.classList.toggle('gutters', gutters);
-  const s = follow ? (small ? Math.max(sFit, Math.min(0.62, (ch - 56) / 620, cw / 700)) : Math.min(sFit * 1.45, 1.25)) : gutters ? Math.min(ch / H, (cw - 2 * 104) / W) : sFit;
-  VIEW = { s, dpr, cw, ch, follow, small, gutters, camX: -(cw - W * s) / 2 / s, camY: -(ch - H * s) / 2 / s };
+  // phones sideways: a slim left margin for the steering thumb, a wider right one for the button diamond
+  const sa = safeInsets(), gl = 84 + sa.l, gr = 150 + sa.r;
+  const s = follow ? (small ? Math.max(sFit, Math.min(0.62, (ch - 56) / 620, cw / 700)) : Math.min(sFit * 1.45, 1.25)) : gutters ? Math.min(ch / H, (cw - gl - gr) / W) : sFit;
+  const camX = gutters ? -(gl + (cw - gl - gr - W * s) / 2) / s : -(cw - W * s) / 2 / s;
+  VIEW = { s, dpr, cw, ch, follow, small, gutters, camX, camY: -(ch - H * s) / 2 / s };
   if (follow) updateCamera(0, true);
   buildStatic();
   $('rotate-hint').hidden = !(ch > cw * 1.15 && !follow);
@@ -7229,7 +7243,7 @@ renderYard = function (tab) {
    ===================================================================== */
 let FRAME_ERRS = 0, HALTED = false, SAVE_T = 0, SAVE_SIG = '';
 function noteError(err) {
-  try { localStorage.setItem('quackHarbor.lastError', JSON.stringify({ t: Date.now(), ver: '1.5', level: G && G.L, msg: String((err && err.message) || err), stack: String((err && err.stack) || '').slice(0, 1500) })); } catch (e) {}
+  try { localStorage.setItem('quackHarbor.lastError', JSON.stringify({ t: Date.now(), ver: '1.5.1', level: G && G.L, msg: String((err && err.message) || err), stack: String((err && err.stack) || '').slice(0, 1500) })); } catch (e) {}
 }
 function failSafe() {
   if (HALTED) return; HALTED = true;
