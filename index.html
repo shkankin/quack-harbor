@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#1fb0d3">
-<meta name="app-version" content="1.4.1">
+<meta name="app-version" content="1.5">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -461,6 +461,13 @@ body.gutters .act-super{position:fixed;left:max(12px,calc(env(safe-area-inset-le
 .modal{position:fixed;inset:0;z-index:40;display:grid;place-items:center;background:rgba(6,50,75,.6);padding:16px;}
 .modal .card{text-align:center;justify-items:center;}
 .modal .row{display:flex;gap:12px;justify-content:center;}
+.stats-recent{list-style:none;margin:0;padding:0;display:grid;gap:4px;font-size:15px;}
+.stats-recent li{display:flex;justify-content:space-between;gap:10px;background:#fff;border-radius:12px;padding:8px 12px;box-shadow:inset 0 -2px 0 var(--line);}
+.stats-recent li span{color:var(--muted);white-space:nowrap;}
+.stats-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+.stats-msg{text-align:center;color:var(--leaf-d);font-weight:900;}
+.stats-msg textarea{width:100%;min-height:120px;font:12px/1.4 ui-monospace,Menlo,Consolas,monospace;border:2px solid var(--line);border-radius:12px;padding:8px;}
+.pity-note{text-align:center;font-weight:900;color:var(--violet-d);margin:0;}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;}}
 </style>
 </head>
@@ -499,7 +506,7 @@ body.gutters .act-super{position:fixed;left:max(12px,calc(env(safe-area-inset-le
     <p class="tag">Who's sailing today?</p>
     <div class="players" id="players-list"></div>
     <div class="players-tools"><button class="link" id="btn-manage">Remove a player</button></div>
-    <p class="ver">Quack Harbor v1.4.1</p>
+    <p class="ver">Quack Harbor v1.5</p>
   </div>
 </section>
 
@@ -532,7 +539,7 @@ body.gutters .act-super{position:fixed;left:max(12px,calc(env(safe-area-inset-le
       <button class="fun" id="btn-pals"><span class="fun-ic" style="--fc:#ffb000"><span class="ic" data-ic="duck"></span></span><small>Duck Pals</small><em class="badge" id="badge-pals" hidden>!</em></button>
       <button class="fun" id="btn-stickers"><span class="fun-ic" style="--fc:#3f8cff"><span class="ic" data-ic="book"></span></span><small>Stickers <span id="stickers-mini"></span></small></button>
     </div>
-    <div class="links"><button class="link" id="btn-switch">Switch player</button><button class="link" id="btn-art">Art Studio</button><button class="link" id="btn-view" hidden>Board: Whole</button><button class="link" id="btn-music">Music: On</button><button class="link" id="btn-sound">Sound: On</button></div>
+    <div class="links"><button class="link" id="btn-switch">Switch player</button><button class="link" id="btn-stats">Play stats</button><button class="link" id="btn-art">Art Studio</button><button class="link" id="btn-view" hidden>Board: Whole</button><button class="link" id="btn-music">Music: On</button><button class="link" id="btn-sound">Sound: On</button></div>
   </div>
 </section>
 
@@ -564,6 +571,17 @@ body.gutters .act-super{position:fixed;left:max(12px,calc(env(safe-area-inset-le
     <div class="row"><button class="btn" id="del-keep">Keep</button><button class="btn warm" id="del-go">Remove</button></div>
   </div>
 </div>
+<section class="screen" id="scr-stats" hidden>
+  <div class="card">
+    <button class="back" data-back aria-label="Back">‹</button>
+    <h2>Play stats</h2>
+    <p>What <b id="stats-name"></b> has played on this device. Copy it and send it along to help tune the game.</p>
+    <div class="rewards" id="stats-sum"></div>
+    <ul class="stats-recent" id="stats-recent"></ul>
+    <div class="row stats-btns"><button class="btn" id="btn-stats-copy">Copy as text</button><button class="btn" id="btn-stats-csv">Download CSV</button></div>
+    <div class="stats-msg" id="stats-msg" hidden></div>
+  </div>
+</section>
 <section class="screen" id="scr-bonus" hidden>
   <div class="card">
     <h2 id="bonus-title">Bonus clear!</h2>
@@ -1533,6 +1551,20 @@ const BONUS_INFO = {
 SKINS.push({ id: 'galleon', name: 'Pirate Galleon', cost: { prize: 'pirates' }, hull: '#7a4524', dark: '#4a2810', rim: '#ffd447', pat: 'wood' });
 HATS.push({ id: 'admiral', name: "Admiral's Hat", cost: { prize: 'pirates' } });
 TWISTS.pirates = { name: 'Pirate Attack!' };
+/* =====================================================================
+   v1.5 BALANCE — from the full-campaign playtest: rewards stop growing
+   after the first loop, later loops get harder, legendary pals have a
+   guarantee, and the game keeps a play log for future tuning.
+   ===================================================================== */
+const LOOP_LEN = LEVELS_PER_WORLD * WORLDS.length;
+const rewardL = L => Math.min(L, LOOP_LEN);
+const encorePay = L => (L > LOOP_LEN ? 0.5 : 1);   // later loops pay less so the collection lasts
+ECON.levelBonus = L => Math.round((10 + 2 * rewardL(L)) * encorePay(L));
+ECON.bossBonus = L => Math.round((40 + 2 * rewardL(L)) * encorePay(L));
+ECON.winChest = L => Math.round((randi(8, 18) + 2 * rewardL(L)) * encorePay(L));
+ECON.rankCoins = R => 30 + 10 * Math.min(R, 15);
+const PITY = 30;   // a legendary pal is guaranteed within this many eggs
+EGGS.duck.cost = { coins: 700 }; EGGS.gold.cost = { gems: 8 };   // pals are the long-tail collection; the guarantee keeps it fair
 /* =====================================================================
    WORLD — a 1600 x 1000 board with a shore along the top. Each island
    has a house; ducks waddle along a path to the end of the jetty,
@@ -2586,7 +2618,7 @@ function startLevel(L) {
   ROCKS = (lay.rocks || []).map(o => ({ ...o, style: ROCK_STYLE[world.id] }));
   POOLS = boss && world.bossKind === 'octo' ? [] : (lay.pools || []).map(([x, y]) => ({ x, y, r: 46, pull: 165, sayT: 0 }));
   const P = levelParams(L, mode), S = boatStats(PROFILE), u = id => upLevel(PROFILE, id);
-  P.teeter += 0.3 * u('whistle'); P.warn += 0.12 * u('alarm'); P.bossTele += 0.1 * u('alarm');
+  P.teeter += 0.3 * u('whistle'); P.warn += 0.12 * u('alarm') * (L > LOOP_LEN ? 0.5 : 1); P.bossTele += 0.1 * u('alarm');
   P.swimTime = (P.waits ? 9 : 5) + 1.5 * u('rings');
   if (T.gold) P.goldChance = Math.max(P.goldChance, T.gold);
   if (T.parade) { P.maxDucks = Math.min(5, P.maxDucks + 2); P.spawnGap *= 0.5; P.goal += mode === 'little' ? 1 : 3; P.calm *= 1.5; }
@@ -2752,7 +2784,7 @@ function updateLurkers(dt) {
           say(D.x, D.y - 70, 'SQUEAK!', '#ffc531', 34); burst(D.x, D.y, 16, { col: ['#ffd23f', '#fff', '#ff8a1c'], type: 'spark', min: 60, max: 200 });
         } else {
           const d = dist(b.x, b.y, h.px, h.py);
-          if (d < 72 && b.jumpT <= 0 && b.invT <= 0 && b.spinT <= 0) hitBoat();
+          if (d < 72 * (G.popScale || 1) && b.jumpT <= 0 && b.invT <= 0 && b.spinT <= 0) hitBoat();
           else if (d < 110 && b.jumpT > 0) { say(b.x, b.y - 80, 'Big hop!', '#3fc46a', 38); addCoins(b.x, b.y, ECON.hop); SFX.coin(); }
           else if (d < 170 && b.invT <= 0) { say(b.x, b.y - 70, 'Dodged!', '#fff', 30); addCoins(b.x, b.y, ECON.dodge); }
         }
@@ -3117,7 +3149,8 @@ function pirateLayout() {
 }
 function makePirates(afterL) {
   const m = G.mode;
-  return { afterL, x: W + 320, y: 420, ty: 420, hp: 3, per: m === 'little' ? 2 : m === 'grown' ? 4 : 3, charge: 0, state: 'enter', t: 0, cd: 2.2, n: 0,
+  const maxHp = m === 'little' ? 3 : 4;
+  return { afterL, x: W + 320, y: 420, ty: 420, hp: maxHp, maxHp, per: m === 'little' ? 2 : m === 'grown' ? 4 : 3, charge: 0, state: 'enter', t: 0, cd: 2.2, n: 0,
     hitT: 0, sinkT: 0, sinking: false, done: false, flashT: 0, talkT: 0, cannon: { x: 118, y: 892, state: 'idle', t: 0, recoil: 0 }, duckShot: null };
 }
 const shipHit = (x, y, pad = 0) => { const S = G && G.pirates; return !!S && !S.sinking && Math.abs(x - S.x) < 150 + pad && Math.abs(y - (S.y + 10)) < 55 + pad; };
@@ -3130,7 +3163,7 @@ startLevel = function (L) {
   G.L = PN.afterL; G.isBoss = false; G.world = { ...WORLDS[0], song: 'pirate' };
   G.lurkers = []; G.P.lurkers = 0; G.P.prankChance = 0; G.P.maxDucks = Math.min(G.P.maxDucks, G.mode === 'grown' ? 4 : 3);
   G.replay = !!(PROFILE.pirates && PROFILE.pirates.wins);
-  G.pirates = makePirates(PN.afterL); G.P.goal = G.pirates.per * 3;
+  G.pirates = makePirates(PN.afterL); G.P.goal = G.pirates.per * G.pirates.maxHp;
 };
 function startPirates(afterL) {
   const loop = Math.floor((afterL - 1) / (LEVELS_PER_WORLD * WORLDS.length));
@@ -3178,16 +3211,17 @@ function updatePirates(dt) {
   const C = S.cannon, cd = dist(b.x, b.y, C.x, C.y + 22), cr = 92 + b.r * 0.7;   // the cannon's little sandbar is solid
   if (cd < cr && cd > 0.1 && b.jumpT <= 0) { b.x = C.x + (b.x - C.x) / cd * cr; b.y = C.y + 22 + (b.y - C.y - 22) / cd * cr; b.spd *= 0.6; }
 }
+const pirateFall = () => (G.mode === 'little' ? 1.7 : G.mode === 'grown' ? 0.9 : 1.15);
 function pirateAttack(S) {
-  const ph = 4 - S.hp, m = G.mode, b = G.boat; S.n++;
-  const cds = m === 'little' ? [4.4, 4, 3.6] : m === 'grown' ? [2, 1.6, 1.25] : [2.7, 2.2, 1.75];
+  const k = S.hp / S.maxHp, ph = k > 0.67 ? 1 : k > 0.34 ? 2 : 3, m = G.mode, b = G.boat; S.n++;
+  const cds = m === 'little' ? [4.4, 4, 3.6] : m === 'grown' ? [1.7, 1.35, 1.05] : [2.3, 1.9, 1.5];
   S.cd = cds[ph - 1] + rand(0, 0.6);
   const kind = m === 'little' ? 'volley' : ph === 1 ? 'volley' : ph === 2 ? (S.n % 2 ? 'volley' : 'sweep') : ['volley', 'sweep', 'big'][S.n % 3];
   const px = S.x - 130, py = S.y - 20;
   S.flashT = 0.3; SFX.cannon(); G.shake = Math.max(G.shake || 0, 4);
   burst(px, py, 14, { col: ['#fff', '#d9dde3', '#ffb347'], min: 40, max: 170 });
   if (kind === 'volley') {
-    const n = m === 'little' ? (ph > 1 ? 2 : 1) : m === 'grown' ? 2 + ph : 1 + ph;
+    const n = m === 'little' ? (ph > 1 ? 2 : 1) : m === 'grown' ? 3 + ph : 2 + ph;
     for (let i = 0; i < n; i++) throwShot('cannon', px, py, i, { delay: i * 0.16, quiet: i > 0 });
     if (Math.random() < 0.5) pirateSay(S, pick(['Fire!', 'Cannons!', 'Arr, fire!']));
   } else if (kind === 'sweep') {
@@ -3196,7 +3230,7 @@ function pirateAttack(S) {
     for (let k = 0; k < n; k++) {
       const off = (k - (n - 1) / 2) * 105 * dir, x = horiz ? b.x + off : b.x, y = horiz ? b.y : b.y + off * 0.8;
       if (!shotOk(x, y)) continue;
-      throwShot('cannon', px, py, i, { x, y, delay: k * 0.13, quiet: i > 0 }); i++;
+      throwShot('cannon', px, py, i, { x, y, delay: k * 0.13, quiet: i > 0, fall: pirateFall() }); i++;
     }
     pirateSay(S, 'Sweep the harbor!');
   } else {
@@ -3233,9 +3267,65 @@ function shipStruck(S) {
     say(S.x, S.y - 210, 'NOOO! Me ship!', '#fff', 46, 1.6);
   } else {
     S.cd = 1.8;
-    say(S.x, S.y - 210, S.hp === 2 ? pick(['ARRR!', 'Blimey!', 'Me sails!']) : 'Fire EVERYTHING!', '#fff', 44, 1.5);
+    say(S.x, S.y - 210, S.hp > 1 ? pick(['ARRR!', 'Blimey!', 'Me sails!']) : 'Fire EVERYTHING!', '#fff', 44, 1.5);
   }
 }
+/* =====================================================================
+   v1.5 LATER LOOPS — after the pirates, the harbor fights back harder:
+   quicker creatures with shorter warnings, more of them, more prank ducks
+   and ducks that wait less. Upgrades no longer outpace the difficulty.
+   ===================================================================== */
+const _levelParamsV15 = levelParams;
+levelParams = function (L, mode) {
+  const P = _levelParamsV15(L, mode), k = Math.min(3, Math.floor((L - 1) / LOOP_LEN));
+  if (!k || isBossLevel(L)) return P;
+  if (mode === 'little') { P.lurkSpeed *= 1 + 0.06 * k; return P; }
+  P.lurkSpeed = Math.min(330, P.lurkSpeed * (1 + 0.12 * k));
+  P.calm *= Math.pow(0.85, k);
+  P.warn = Math.max(0.6, P.warn * Math.pow(0.9, k));
+  P.lurkers = Math.min(3, P.lurkers + (mode === 'grown' ? 1 : k >= 2 ? 1 : 0));
+  P.prankChance = Math.min(0.45, P.prankChance + 0.04 * k);
+  P.teeter *= Math.pow(0.92, k);
+  P.duckSpeed *= 1 + 0.05 * k;
+  return P;
+};
+/* treasure chests floating in the water stop growing after the first loop too */
+const _openFloatChestV15 = openFloatChest;
+openFloatChest = function (p) { const L0 = G.L; G.L = rewardL(L0); try { _openFloatChestV15(p); } finally { G.L = L0; } };
+
+const _startLevelV15 = startLevel;
+startLevel = function (L) {
+  _startLevelV15(L);
+  const k = Math.min(3, Math.floor((G.L - 1) / LOOP_LEN));
+  G.popScale = !k || G.pirates || G.mode === 'little' ? 1 : 1 + 0.18 * k;   // later-loop splashes reach farther
+};
+/* later loops pay a bit less, so the collection lasts; the story itself pays full price */
+const encore = () => !!G && !G.pirates && G.L > LOOP_LEN;
+const _addCoinsV15 = addCoins;
+addCoins = function (x, y, n) {   // exact on average: fractions carry over, so single coins count too
+  if (encore()) { G.coinAcc = (G.coinAcc || 0) + n * 0.35; n = Math.floor(G.coinAcc); G.coinAcc -= n; if (!n) return; }
+  return _addCoinsV15(x, y, n);
+};
+const _addGemsV15 = addGems;
+addGems = function (x, y, n) {
+  if (encore()) { let k = 0; for (let i = 0; i < n; i++) if (Math.random() < 0.5) k++; if (!k) return; n = k; }
+  return _addGemsV15(x, y, n);
+};
+/* in later loops creatures aim where the boat is heading, so sailing straight on isn't safe */
+const _updateLurkersV15 = updateLurkers;
+updateLurkers = function (dt) {
+  const before = G.lurkers.map(h => h.state);
+  _updateLurkersV15(dt);
+  const k = Math.min(3, Math.floor((G.L - 1) / LOOP_LEN)), lead = !k || G.pirates || G.mode === 'little' ? 0 : G.mode === 'grown' ? Math.min(0.75, 0.35 + 0.2 * k) : Math.min(0.55, 0.15 + 0.2 * (k - 1));
+  if (!lead) return;
+  const b = G.boat;
+  G.lurkers.forEach((h, i) => {
+    if (before[i] === 'warn' || h.state !== 'warn') return;
+    const px = clamp(b.x + (b.vx || 0) * G.P.warn * lead, 60, W - 60), py = clamp(b.y + (b.vy || 0) * G.P.warn * lead, SHORE + 60, H - 50);
+    if (ISLANDS.some(I => px > I.l - 20 && px < I.r + 20 && py > I.t - 20 && py < I.b + 20)) return;
+    h.px = h.x = px; h.py = h.y = py;
+  });
+};
 /* =====================================================================
    RENDERING — everything is drawn with canvas shapes, no image files.
    ===================================================================== */
@@ -5098,8 +5188,9 @@ function drawShip(c, S, t, mini) {
   c.restore(); c.globalAlpha = 1;
   if (hit > 0.6 && !mini) dizzyStars(c, S.x + 120, S.y - 170, 30, t);
   if (!mini && !S.sinking && S.state !== 'enter') {
-    c.fillStyle = 'rgba(20,59,82,.45)'; rr(c, S.x - 66, S.y + 84, 132, 36, 18); c.fill();
-    for (let i = 0; i < 3; i++) { c.fillStyle = i < hp ? '#ff4d6d' : 'rgba(255,255,255,.45)'; drawHeartShape(c, S.x - 36 + i * 36, S.y + 104 + Math.sin(t * 3 + i) * 2, 14); }
+    const n = S.maxHp || 3, w = n * 36 + 24;
+    c.fillStyle = 'rgba(20,59,82,.45)'; rr(c, S.x - w / 2, S.y + 84, w, 36, 18); c.fill();
+    for (let i = 0; i < n; i++) { c.fillStyle = i < hp ? '#ff4d6d' : 'rgba(255,255,255,.45)'; drawHeartShape(c, S.x - (n - 1) * 18 + i * 36, S.y + 104 + Math.sin(t * 3 + i) * 2, 14); }
   }
   if (S.sinking) {   // the crew rows away, shaking a fist
     const k = sink, rx = S.x + 40 + k * 150, ry = S.y + 120;
@@ -5605,8 +5696,8 @@ function showWin() {
   const L = G.L, w = G.world, little = G.mode === 'little';
   const stars = little ? (G.lost <= 1 ? 3 : G.lost <= 3 ? 2 : 1) : (G.lost === 0 ? 3 : G.lost === 1 ? 2 : 1);
   const first = !G.replay, newThree = stars === 3 && (PROFILE.best[L] || 0) < 3;
-  const bonus = Math.round((G.isBoss ? ECON.bossBonus(L) : ECON.levelBonus(L)) * (first ? 1 : ECON.replay)), milestone = first && L % 5 === 0;
-  let gemBonus = (newThree ? 1 : 0) + (milestone ? 3 : 0) + (G.isBoss && first ? 5 : 0);
+  const bonus = Math.round((G.isBoss ? ECON.bossBonus(L) : ECON.levelBonus(L)) * (first ? 1 : ECON.replay)), milestone = first && L % 5 === 0 && L <= LEVELS_PER_WORLD * WORLDS.length;
+  let gemBonus = (newThree && L <= LEVELS_PER_WORLD * WORLDS.length ? 1 : 0) + (milestone ? 3 : 0) + (G.isBoss && first ? 5 : 0);
   PROFILE.coins += bonus; PROFILE.gems += gemBonus;
   PROFILE.best[L] = Math.max(PROFILE.best[L] || 0, stars);
   PROFILE.level = Math.max(PROFILE.level, L + 1);
@@ -5620,7 +5711,7 @@ function showWin() {
   $('win-title').textContent = G.isBoss ? 'Boss Asleep!' : pick(['Harbor Hero!', 'Duck-tastic!', 'Quackin’ Great!', 'Super Sailor!']);
   const rows = [['Coins you found', G.coins, 'coin'], [G.isBoss ? 'Boss bonus' : first ? 'Level bonus' : 'Replay bonus', bonus, 'coin']];
   rows.push(['Captain XP', xpGain, 'xp']);
-  if (newThree) rows.push(['First three stars', 1, 'gem']);
+  if (newThree && L <= LEVELS_PER_WORLD * WORLDS.length) rows.push(['First three stars', 1, 'gem']);
   if (G.isBoss && first) rows.push([`${w.boss} trophy`, 5, 'gem']);
   if (milestone) rows.push([`Level ${L} milestone`, 3, 'gem']);
   if (newJars) rows.push(['Star jar full!', ECON.jarCoins * newJars, 'coin'], ['Star jar gems', ECON.jarGems * newJars, 'gem']);
@@ -5640,7 +5731,7 @@ function showWin() {
 }
 $('btn-chest').addEventListener('click', () => {
   const chest = $('btn-chest'); if (chest.disabled) return; chest.disabled = true;
-  const coins = ECON.winChest(G.L) + (G.isBoss ? ECON.bossChest : 0), gems = G.isBoss ? (G.replay ? randi(0, 1) : randi(2, 3)) : Math.random() < 0.25 ? 1 : 0;
+  const coins = ECON.winChest(G.L) + (G.isBoss ? ECON.bossChest : 0), gems = G.isBoss ? (G.replay ? randi(0, 1) : randi(2, 3)) : Math.random() < (G.L > LEVELS_PER_WORLD * WORLDS.length ? 0.12 : 0.25) ? 1 : 0;
   PROFILE.coins += coins; PROFILE.gems += gems; persist();
   chest.classList.remove('shake'); chest.innerHTML = CHEST_SVG(true);
   SFX.gem(); SFX.buy();
@@ -6901,8 +6992,8 @@ BONUS_GAMES.balloons = {
   init(B) {
     const m = B.mode;
     Object.assign(B, { balloons: [], spawnT: 0.4, popped: 0, escaped: 0, spawned: 0, gemLeft: 2, n: 0,
-      spd: { little: [80, 110], big: [115, 165], grown: [160, 230] }[m], r: { little: 56, big: 46, grown: 40 }[m], pad: { little: 40, big: 24, grown: 14 }[m],
-      gap: { little: [1.25, 0.8], big: [0.95, 0.45], grown: [0.75, 0.33] }[m] });
+      spd: { little: [65, 90], big: [95, 135], grown: [160, 230] }[m], r: { little: 60, big: 50, grown: 40 }[m], pad: { little: 44, big: 28, grown: 14 }[m],
+      gap: { little: [1.5, 1.0], big: [1.15, 0.65], grown: [0.75, 0.33] }[m] });
   },
   tap(B, p) {
     let best = null, bd = 1e9;
@@ -6930,7 +7021,7 @@ BONUS_GAMES.balloons = {
   },
   after(B, dt) { for (const b of B.balloons) { b.y += b.vy * dt * 0.5; b.ph += dt; } },
   done: () => false,
-  perfect: B => B.escaped === 0 && B.popped > 4,
+  perfect: B => B.escaped <= (B.mode === 'little' ? 1 : 0) && B.popped > 4,
   summary: B => `${B.popped} popped`,
   endWord: () => 'TIME!',
   hud(c, B, t) { c.fillStyle = 'rgba(255,255,255,.9)'; rr(c, 1270, 24, 220, 66, 33); c.fill(); this.drawBalloon(c, { x: 1314, y: 54, col: '#ff5a6e', kind: 'reg', big: false, sq: 0, ph: 0 }, 20, t); txt(c, String(B.popped), 1410, 59, 38, '#143b52', null); },
@@ -7138,7 +7229,7 @@ renderYard = function (tab) {
    ===================================================================== */
 let FRAME_ERRS = 0, HALTED = false, SAVE_T = 0, SAVE_SIG = '';
 function noteError(err) {
-  try { localStorage.setItem('quackHarbor.lastError', JSON.stringify({ t: Date.now(), ver: '1.4', level: G && G.L, msg: String((err && err.message) || err), stack: String((err && err.stack) || '').slice(0, 1500) })); } catch (e) {}
+  try { localStorage.setItem('quackHarbor.lastError', JSON.stringify({ t: Date.now(), ver: '1.5', level: G && G.L, msg: String((err && err.message) || err), stack: String((err && err.stack) || '').slice(0, 1500) })); } catch (e) {}
 }
 function failSafe() {
   if (HALTED) return; HALTED = true;
@@ -7267,6 +7358,93 @@ drawWorldUnder = function (c, t) {
     if (k < 0.25) { c.fillStyle = `rgba(230,245,255,${(0.7 * (1 - k * 4)).toFixed(2)})`; c.beginPath(); c.arc(r.x - 3, r.y - k * 36, 1.6, 0, 7); c.arc(r.x + 3, r.y - k * 30, 1.3, 0, 7); c.fill(); }
   }
 };
+/* =====================================================================
+   v1.5 — a guaranteed legendary pal, and a play log parents can send
+   ===================================================================== */
+
+/* ---------- eggs: a new legendary pal is guaranteed within PITY eggs ---------- */
+const missingLegendaries = () => PALS.filter(p => p.r === 'legendary' && !PROFILE.pals[p.id]);
+function rollPal(eggId) {
+  const E = EGGS[eggId], need = missingLegendaries();
+  PROFILE.pity = PROFILE.pity || 0;
+  let rar = 'common', pal;
+  if (need.length && PROFILE.pity + 1 >= PITY) { rar = 'legendary'; pal = pick(need); }
+  else { const roll = Math.random() * 100; let acc = 0; for (const [r, pct] of Object.entries(E.odds)) { acc += pct; if (roll < acc) { rar = r; break; } } pal = pick(PALS.filter(p => p.r === rar)); }
+  PROFILE.pity = rar === 'legendary' || !need.length ? 0 : PROFILE.pity + 1;
+  const isNew = !PROFILE.pals[pal.id];
+  PROFILE.pals[pal.id] = (PROFILE.pals[pal.id] || 0) + 1;
+  if (!isNew) PROFILE.coins += RARITY[rar].dupe;
+  if (isNew && !PROFILE.pal) PROFILE.pal = pal.id;
+  return { E, pal, rar, isNew };
+}
+startHatch = function (eggId) {
+  const { E, pal, rar, isNew } = rollPal(eggId);
+  persist(); Sound.init();
+  HATCH = { E, pal, rar, isNew, taps: 0, phase: 'egg', t: 0, wob: 0, last: performance.now() };
+  $('egg-shop').hidden = true; $('hatch-stage').hidden = false; $('hatch-btns').hidden = true;
+  $('hatch-text').textContent = 'Tap the egg to crack it!';
+  requestAnimationFrame(hatchLoop);
+};
+const _renderEggsV15 = renderEggs;
+renderEggs = function () {
+  _renderEggsV15();
+  if (!missingLegendaries().length) return;
+  const left = Math.max(1, PITY - (PROFILE.pity || 0)), p = document.createElement('p'); p.className = 'pity-note';
+  p.textContent = left === 1 ? 'The next egg is a new legendary pal!' : `A new legendary pal is guaranteed within ${left} eggs.`;
+  $('egg-shop').prepend(p);
+};
+
+/* ---------- play log: every level, fight and bonus stage on this device ---------- */
+const LOG_MAX = 500;
+function logPlay(e) { if (!PROFILE) return; PROFILE.log = PROFILE.log || []; PROFILE.log.push(e); if (PROFILE.log.length > LOG_MAX) PROFILE.log.splice(0, PROFILE.log.length - LOG_MAX); }
+const logStars = () => G.mode === 'little' ? (G.lost <= 1 ? 3 : G.lost <= 3 ? 2 : 1) : (G.lost === 0 ? 3 : G.lost === 1 ? 2 : 1);
+const levelEntry = result => ({ at: Date.now(), L: G.L, kind: G.pirates ? 'pirates' : G.isBoss ? 'boss' : 'level', mode: G.mode, result, sec: Math.round(G.t),
+  hits: G.lost, ducks: G.delivered, goal: G.P.goal, coins: G.coins, gems: G.gems, stars: result === 'won' ? logStars() : 0 });
+const _showWinV15 = showWin; showWin = function () { logPlay(levelEntry('won')); ECON.jarGems = G.L > LOOP_LEN && !G.pirates ? 1 : 2; _showWinV15(); };
+const _showLoseV15 = showLose; showLose = function () { logPlay(levelEntry('lost')); _showLoseV15(); };
+const _leaveGameV15 = leaveGame; leaveGame = function () { if (G && !G.won && !G.over) logPlay(levelEntry('quit')); _leaveGameV15(); };
+const _restartV15 = restartLevel; restartLevel = function () { if (G && !G.won && !G.over) logPlay(levelEntry('restart')); _restartV15(); };
+const _bonusResultV15 = showBonusResult;
+showBonusResult = function () {
+  const B = BONUS; logPlay({ at: Date.now(), L: B.L, kind: 'bonus:' + B.kind, mode: B.mode, result: B.perfect ? 'perfect' : 'done', sec: Math.round(B.time - B.left), hits: 0, ducks: 0, goal: 0, coins: B.coins, gems: B.gems, stars: 0 });
+  _bonusResultV15();
+};
+SCREENS.push('scr-stats');
+const LOG_COLS = ['date', 'level', 'kind', 'mode', 'result', 'seconds', 'hits', 'ducks', 'goal', 'coins', 'gems', 'stars'];
+function logCsv(p) {
+  const pad = n => String(n).padStart(2, '0'), day = t => { const d = new Date(t); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+  return [LOG_COLS.join(','), ...(p.log || []).map(e => [day(e.at), e.L, e.kind, e.mode, e.result, e.sec, e.hits, e.ducks, e.goal, e.coins, e.gems, e.stars].join(','))].join('\n');
+}
+function renderStats() {
+  const log = PROFILE.log || [], lv = log.filter(e => e.kind === 'level'), recent = lv.slice(-30), wins = recent.filter(e => e.result === 'won');
+  const fights = log.filter(e => e.kind === 'boss' || e.kind === 'pirates'), bonus = log.filter(e => e.kind.startsWith('bonus'));
+  const avg = (xs, f) => xs.length ? (xs.reduce((a, e) => a + f(e), 0) / xs.length) : 0;
+  $('stats-name').textContent = PROFILE.name;
+  const rows = [
+    ['Levels won', lv.filter(e => e.result === 'won').length], ['Levels lost', lv.filter(e => e.result === 'lost').length],
+    ['Quit or restarted', log.filter(e => e.result === 'quit' || e.result === 'restart').length],
+    ['Seconds per level (last 30 wins)', wins.length ? Math.round(avg(wins, e => e.sec)) : '–'],
+    ['Bumps per level (last 30)', recent.length ? avg(recent, e => e.hits).toFixed(2) : '–'],
+    ['Boss and pirate fights won', `${fights.filter(e => e.result === 'won').length} of ${fights.filter(e => e.result !== 'quit').length}`],
+    ['Perfect bonus stages', `${bonus.filter(e => e.result === 'perfect').length} of ${bonus.length}`],
+    ['Minutes of play logged', Math.round(log.reduce((a, e) => a + e.sec, 0) / 60)],
+  ];
+  $('stats-sum').innerHTML = rows.map(([a, v]) => `<div class="reward"><span>${a}</span><span>${v}</span></div>`).join('');
+  const word = { level: 'Level', boss: 'Boss', pirates: 'Pirates' };
+  $('stats-recent').innerHTML = log.slice(-8).reverse().map(e => `<li>${e.kind.startsWith('bonus') ? 'Bonus · ' + BONUS_INFO[e.kind.slice(6)].name : (word[e.kind] || e.kind) + ' ' + levelInWorld(e.L) + ' of ' + worldOf(e.L).name}<span>${e.result} · ${e.sec}s${e.kind.startsWith('bonus') ? '' : ' · ' + e.hits + (e.hits === 1 ? ' bump' : ' bumps')}</span></li>`).join('') || '<li>Nothing played yet.</li>';
+  $('stats-msg').hidden = true; show('scr-stats');
+}
+$('btn-stats').addEventListener('click', () => { SFX.click(); renderStats(); });
+$('btn-stats-copy').addEventListener('click', () => {
+  const text = logCsv(PROFILE), msg = $('stats-msg');
+  const fallback = () => { msg.hidden = false; msg.innerHTML = ''; const ta = document.createElement('textarea'); ta.value = text; ta.readOnly = true; msg.append(ta); ta.select(); };
+  try { navigator.clipboard.writeText(text).then(() => { msg.hidden = false; msg.textContent = 'Copied! Paste it into a message.'; SFX.buy(); }, fallback); } catch (e) { fallback(); }
+});
+$('btn-stats-csv').addEventListener('click', () => {
+  const blob = new Blob([logCsv(PROFILE)], { type: 'text/csv' }), a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = `quack-harbor-log-${PROFILE.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.csv`;
+  document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); SFX.click();
+});
 
 </script>
 <script>if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));</script>
