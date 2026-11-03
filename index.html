@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#1fb0d3">
-<meta name="app-version" content="1.5.1">
+<meta name="app-version" content="1.6">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -268,6 +268,15 @@ body.gutters .act-turbo{grid-column:1;grid-row:1;}
 body.gutters .act-spin{grid-column:1;grid-row:2;}
 body.gutters .act-jump{grid-column:1;grid-row:3;width:84px;height:84px;}
 body.gutters .act-jump .ic{width:36px;height:36px;}
+/* v1.6 Play together */
+.btn.together{width:100%;justify-content:center;}
+.mp-code{font-family:var(--f-display);font-size:clamp(46px,12vw,72px);letter-spacing:.18em;text-align:center;color:var(--ink);background:#fff;border-radius:22px;padding:8px 0 10px;box-shadow:inset 0 -5px 0 var(--line);font-variant-numeric:tabular-nums;}
+.mp-status{text-align:center;min-height:1.4em;font-weight:800;color:var(--muted);text-wrap:balance;}
+.mp-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:330px;margin:0 auto;}
+.mp-key{font-family:var(--f-display);font-size:32px;color:var(--ink);background:#fff;border:0;border-radius:18px;padding:12px 0;box-shadow:0 5px 0 var(--line);cursor:pointer;}
+.mp-key:active{transform:translateY(3px);box-shadow:0 2px 0 var(--line);}
+.mp-key.del{grid-column:1;font-size:26px;color:var(--muted);}
+.mp-wait{text-align:center;font-weight:800;color:var(--muted);text-wrap:balance;}
 /* Alpha 3: power buttons, super, shop tabs */
 #pad{display:flex;align-items:flex-end;gap:12px;}
 .pad-slots{display:flex;flex-direction:column;gap:12px;}
@@ -512,7 +521,7 @@ body.gutters #pad #btn-jump .ic{width:32px;height:32px;}
     <p class="tag">Who's sailing today?</p>
     <div class="players" id="players-list"></div>
     <div class="players-tools"><button class="link" id="btn-manage">Remove a player</button></div>
-    <p class="ver">Quack Harbor v1.5.1</p>
+    <p class="ver">Quack Harbor v1.6</p>
   </div>
 </section>
 
@@ -529,6 +538,7 @@ body.gutters #pad #btn-jump .ic{width:32px;height:32px;}
     </div>
     <div class="rank"><div class="rank-top"><b id="rank-name">Deckhand</b><small id="rank-level">Captain level 1</small></div><div class="xpbar"><i id="xp-fill"></i></div></div>
     <button class="btn big go" id="btn-play"><span class="ic" data-ic="play"></span>Play Level <span id="home-level">1</span></button>
+    <button class="btn together" id="btn-together"><span class="ic" data-ic="boat"></span>Play together</button>
     <div class="worlds" id="home-worlds" aria-label="Worlds and levels"></div>
     <div class="world-dots" id="world-dots"></div>
     <div class="home-extras">
@@ -630,6 +640,31 @@ body.gutters #pad #btn-jump .ic{width:32px;height:32px;}
   </div>
 </section>
 
+<section class="screen" id="scr-together" hidden>
+  <div class="card">
+    <button class="back" data-back aria-label="Back">‹</button>
+    <h2>Play together</h2>
+    <div id="mp-pick">
+      <p>Two devices sail the same harbor and rescue ducks as a team. Both need the internet.</p>
+      <div class="row"><button class="btn big go" id="btn-mp-host">Host a game</button><button class="btn big" id="btn-mp-join">Join a game</button></div>
+      <p class="mp-status" id="mp-pick-msg"></p>
+    </div>
+    <div id="mp-hosting" hidden>
+      <p>On the other device, tap <b>Play together</b>, then <b>Join a game</b>, and type:</p>
+      <div class="mp-code" id="mp-code">····</div>
+      <p class="mp-status" id="mp-host-status">Waiting for a friend…</p>
+      <button class="btn big go" id="btn-mp-start" hidden>Start</button>
+      <div class="links"><button class="link" id="btn-mp-stop">Stop playing together</button></div>
+    </div>
+    <div id="mp-joining" hidden>
+      <p>Type the code shown on the other device:</p>
+      <div class="mp-code" id="mp-entry">· · · ·</div>
+      <div class="mp-pad" id="mp-pad"></div>
+      <p class="mp-status" id="mp-join-status"></p>
+      <div class="links"><button class="link" id="btn-mp-leave">Leave</button></div>
+    </div>
+  </div>
+</section>
 <section class="screen" id="scr-pause" hidden>
   <div class="card">
     <h2>Paused</h2>
@@ -2751,9 +2786,9 @@ function updateDucks(dt) {
       if (canGrab && !d.prank && d.t > 0.3 && dist(b.x, b.y, d.x, d.y) < netR() * 0.85 && catchDuck(d, false)) continue;
       if (d.t > (d.prank ? 1.4 : P.swimTime || 5)) { d.state = 'gone'; burst(d.x, d.y, 8, { col: '#fff' }); ring(d.x, d.y, 'rgba(255,255,255,.7)', 0.5, 30); }
     } else if (d.state === 'fly') {
-      const k = Math.min(1, d.t / (d.fd || 0.3));
-      d.x = lerp(d.sx, b.x, k); d.y = lerp(d.sy, b.y, k) - Math.sin(k * Math.PI) * 50;
-      if (k >= 1) { d.state = 'gone'; b.seats.push({ gold: d.gold, prank: !!d.prank, pers: d.pers }); if (d.prank) armPrank(); }
+      const k = Math.min(1, d.t / (d.fd || 0.3)), tb = d._tb || b;   // co-op: fly to the boat that caught it
+      d.x = lerp(d.sx, tb.x, k); d.y = lerp(d.sy, tb.y, k) - Math.sin(k * Math.PI) * 50;
+      if (k >= 1) { d.state = 'gone'; tb.seats.push({ gold: d.gold, prank: !!d.prank, pers: d.pers }); if (d.prank) withBoat(tb, armPrank); }
     }
   }
   G.ducks = G.ducks.filter(d => d.state !== 'gone');
@@ -5419,10 +5454,10 @@ function updateHud() {
     HUDC.goal = goal; $('hud-goal').textContent = goal; $('hud-bar').style.width = Math.min(100, G.delivered / G.P.goal * 100) + '%';
     $('hud-goal-ic').innerHTML = G.isBoss ? ICONS.crown : ICONS.duck;
   }
-  const hk = `${G.hearts}/${S.hearts}/${b.shield}/${G.P.hurts}`;
+  const hmax = Math.max(S.hearts, G.heartsMax || 0), hk = `${G.hearts}/${hmax}/${b.shield}/${G.P.hurts}`;
   if (HUDC.hearts !== hk) {
     HUDC.hearts = hk; let h = '';
-    if (G.P.hurts) for (let i = 0; i < S.hearts; i++) h += `<span class="ic${i < G.hearts ? '' : ' off'}">${ICONS.heart}</span>`;
+    if (G.P.hurts) for (let i = 0; i < hmax; i++) h += `<span class="ic${i < G.hearts ? '' : ' off'}">${ICONS.heart}</span>`;
     if (b.shield) h += `<span class="ic" style="color:#3f8cff">${ICONS.shield}</span>`;
     $('hud-hearts').innerHTML = h; $('hud-hearts').hidden = !h;
   }
@@ -7243,7 +7278,7 @@ renderYard = function (tab) {
    ===================================================================== */
 let FRAME_ERRS = 0, HALTED = false, SAVE_T = 0, SAVE_SIG = '';
 function noteError(err) {
-  try { localStorage.setItem('quackHarbor.lastError', JSON.stringify({ t: Date.now(), ver: '1.5.1', level: G && G.L, msg: String((err && err.message) || err), stack: String((err && err.stack) || '').slice(0, 1500) })); } catch (e) {}
+  try { localStorage.setItem('quackHarbor.lastError', JSON.stringify({ t: Date.now(), ver: '1.6', level: G && G.L, msg: String((err && err.message) || err), stack: String((err && err.stack) || '').slice(0, 1500) })); } catch (e) {}
 }
 function failSafe() {
   if (HALTED) return; HALTED = true;
@@ -7459,6 +7494,393 @@ $('btn-stats-csv').addEventListener('click', () => {
   a.href = URL.createObjectURL(blob); a.download = `quack-harbor-log-${PROFILE.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.csv`;
   document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); SFX.click();
 });
+/* =====================================================================
+   v1.6 PLAY TOGETHER — online co-op on two devices.
+   The host's device runs the harbor with two boats. The guest sends its
+   steering and button presses, and draws what the host sends back.
+   Connections go through PeerJS (free, no account); ?mptest uses a
+   BroadcastChannel so two tabs can play each other for testing.
+   ===================================================================== */
+const MP_VER = 1, MP_PREFIX = 'quackharbor-v1-', MP_SNAP_GAP = 0.05;
+let MP = null;
+
+/* ---------- transport ---------- */
+function loadScript(src) { return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); }
+function loadPeer() { return window.Peer ? Promise.resolve() : loadScript('peerjs.min.js').catch(() => loadScript('https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js')); }
+const mpTestMode = () => /[?&]mptest\b/.test(location.search);
+function makeNet(role, code, H, M) {
+  const N = M.net = { open: false, send() {}, close() {} };
+  if (mpTestMode()) {
+    const bc = new BroadcastChannel('qh-' + code), other = role === 'host' ? 'guest' : 'host';
+    bc.onmessage = e => {
+      const m = e.data; if (!m || m.to !== role) return;
+      if (m.sys === 'hi') { if (!N.open) { N.open = true; if (role === 'host') bc.postMessage({ to: other, sys: 'hi' }); H.open(); } return; }
+      if (m.sys === 'bye') { if (N.open) { N.open = false; H.close(); } return; }
+      H.data(m.d);
+    };
+    N.send = d => { if (N.open) bc.postMessage({ to: other, d }); };
+    N.close = () => { try { bc.postMessage({ to: other, sys: 'bye' }); bc.close(); } catch (e) {} N.open = false; };
+    if (role === 'guest') bc.postMessage({ to: 'host', sys: 'hi' });
+    return Promise.resolve(N);
+  }
+  return loadPeer().then(() => new Promise((resolve, reject) => {
+    const peer = role === 'host' ? new Peer(MP_PREFIX + code) : new Peer();
+    let conn = null, settled = false;
+    const wire = c => {
+      conn = c;
+      c.on('open', () => { N.open = true; H.open(); });
+      c.on('data', d => H.data(d));
+      c.on('close', () => { if (conn === c && N.open) { N.open = false; H.close(); } });
+      c.on('error', () => {});
+    };
+    peer.on('open', () => { settled = true; resolve(N); if (role === 'guest') wire(peer.connect(MP_PREFIX + code, { reliable: true })); });
+    if (role === 'host') peer.on('connection', c => { if (N.open) { c.on('open', () => c.close()); return; } wire(c); });
+    peer.on('error', err => { const t = (err && err.type) || 'error'; if (!settled) { settled = true; reject(t); } else H.error(t); });
+    peer.on('disconnected', () => { try { if (!peer.destroyed) peer.reconnect(); } catch (e) {} });
+    N.send = d => { if (conn && N.open) try { conn.send(d); } catch (e) {} };
+    N.close = () => { N.open = false; try { conn && conn.close(); } catch (e) {} try { peer.destroy(); } catch (e) {} };
+  }));
+}
+
+/* ---------- session ---------- */
+function mpLeanProfile(p) { const o = JSON.parse(JSON.stringify(p)); delete o.log; return o; }
+function mpStart(role, code, ui) {
+  if (MP) mpStop(true);
+  const M = MP = { role, code, ui, net: null, live: false, peer: null, seats: null, acts: [], sfx: [], nid: 0, sendT: 0, inT: 0, lastIn: '', gap: 0.05, at: 0 };
+  return makeNet(role, code, {
+    open: () => { if (MP !== M) return; M.net.send({ t: 'hello', v: MP_VER, profile: mpLeanProfile(PROFILE) }); },
+    data: d => { if (MP === M) mpOnData(d); },
+    close: () => { if (MP === M) mpLost(); },
+    error: t => { if (MP === M) M.ui('error', t); },
+  }, M).then(N => { if (MP !== M) N.close(); return M; });
+}
+function mpStop(quiet) {
+  const M = MP; if (!M) return;
+  MP = null;
+  try { M.net && M.net.send({ t: 'bye' }); } catch (e) {}
+  setTimeout(() => { try { M.net && M.net.close(); } catch (e) {} }, 150);
+  if (G && G.mpHost) mpDropGuest();
+  if (!quiet && M.ui) M.ui('stopped');
+}
+function mpLost() {
+  const M = MP; if (!M) return;
+  M.live = false; M.peer = null;
+  if (M.role === 'host') {
+    if (G && G.mpHost) { mpDropGuest(); toast('Your friend left', 'You can keep sailing on your own.', 'boat'); }
+    M.ui('waiting');
+  } else {
+    const inGame = !!(G && G.mpGuest);
+    MP = null; try { M.net.close(); } catch (e) {}
+    if (inGame) leaveGame();
+    M.ui('lost');
+  }
+}
+function mpOnData(d) {
+  const M = MP;
+  if (typeof d === 'string') { if (d[0] === 'S' && M.role === 'guest') mpApplySnap(d); return; }
+  if (!d || !d.t) return;
+  if (d.t === 'hello') {
+    if (d.v !== MP_VER) { M.ui('version'); return; }
+    M.peer = d.profile; M.live = true; M.ui('connected');
+    return;
+  }
+  if (d.t === 'bye') { mpLost(); return; }
+  if (M.role === 'host') {
+    if (!G || !G.mpHost) return;
+    if (d.t === 'in') M.seats[1].input = { x: +d.x || 0, y: +d.y || 0 };
+    else if (d.t === 'act' && M.acts.length < 8) M.acts.push(d);
+  } else {
+    if (d.t === 'start') mpGuestStart(d);
+    else if (d.t === 'home') { if (G && G.mpGuest) leaveGame(); M.ui('connected'); }
+  }
+}
+const mpConnected = () => !!(MP && MP.live && MP.net && MP.net.open);
+
+/* ---------- seats: the parts of a level that belong to one boat ---------- */
+const SEAT_KEYS = ['boat', 'S', 'cd', 'magnetT', 'super', 'superReady', 'blast', 'target', 'input', 'coins', 'gems', 'pendingCoins', 'pendingGems', 'flyers'];
+function seatSave(s) { for (const k of SEAT_KEYS) s[k] = G[k]; s.profile = PROFILE; }
+function seatLoad(s) { for (const k of SEAT_KEYS) G[k] = s[k]; PROFILE = s.profile; }
+function withBoat(b, fn) { if (!b || b === G.boat) return fn(); const keep = G.boat; G.boat = b; try { return fn(); } finally { G.boat = keep; } }
+
+function mpSetupHostLevel() {
+  const M = MP, gp = M.peer, S1 = boatStats(gp), b0 = G.boat;
+  const b1 = JSON.parse(JSON.stringify(b0));
+  Object.assign(b1, { x: clamp(b0.x + 120, 80, W - 80), shield: S1.shield, seats: [], cd: { jump: 0, turbo: 0, spin: 0 }, whirlP: null, beamTo: null });
+  const me = {}; seatSave(me);
+  M.seats = [me, { boat: b1, S: S1, cd: {}, magnetT: 0, super: 0, superReady: false, blast: null, target: null, input: { x: 0, y: 0 }, coins: 0, gems: 0, pendingCoins: 0, pendingGems: 0, flyers: [], profile: gp }];
+  M.acts.length = 0; M.sfx.length = 0; M.sendT = 0;
+  G.hearts = G.heartsMax = Math.max(G.S.hearts, S1.hearts) + 1;   // one shared pool, plus one for sharing
+  G.mpHost = true;
+}
+function mpDropGuest() { if (!G) return; G.mpHost = false; if (MP) MP.seats = null; }
+
+/* ---------- host: run each boat's half of the frame ---------- */
+function mpDoAct(a) {
+  if (a.a === 'jump') doJump();
+  else if (a.a === 'super') useSuper();
+  else if (a.a === 'ab' && ABILITIES[a.id] && (PROFILE.slots || []).includes(a.id)) useAbility(a.id);
+}
+const _updateGameMP = updateGame;
+updateGame = function (dt) {
+  if (G && G.mpGuest) return mpGuestTick(dt);
+  if (!(G && G.mpHost && MP && MP.seats)) return _updateGameMP(dt);
+  const M = MP, seats = M.seats;
+  seatSave(seats[0]);
+  if (M.acts.length) { seatLoad(seats[1]); for (const a of M.acts.splice(0)) mpDoAct(a); seatSave(seats[1]); }
+  M.flip = !M.flip;
+  const order = M.flip ? [0, 1] : [1, 0];
+  M.inSim = true;
+  try { order.forEach((i, n) => { M.pass = i; M.first = n === 0; seatLoad(seats[i]); _updateGameMP(dt / 2); seatSave(seats[i]); }); }
+  finally { M.inSim = false; M.pass = -1; seatLoad(seats[0]); }
+  seats[1].flyers = []; seats[1].pendingCoins = seats[1].pendingGems = 0;
+  if (M.show) { const f = M.show; M.show = null; f(); }
+  M.sendT += dt; if (M.sendT >= MP_SNAP_GAP && G.mpHost) { M.sendT = 0; mpSendSnap(); }
+};
+const mpX2 = fn => function (dt) { return fn(G && G.mpHost && MP && MP.inSim ? dt * 2 : dt); };
+updateBoat = mpX2(updateBoat);
+const _updAbMP = updateAbilities;
+updateAbilities = function (dt) {
+  if (!(G && G.mpHost && MP && MP.inSim)) return _updAbMP(dt);
+  if (MP.first) return _updAbMP(dt * 2);
+  // second boat: only its own timers and power; the world already moved this frame
+  const keep = { shake: G.shake, flash: G.flash, freezeT: G.freezeT, nightT: G.nightT, partyT: G.partyT, powerT: G.powerT, banner: G.banner, fx: G.fx, shots: G.shots };
+  G.powerT = 1e9; G.partyT = 0; G.banner = null; G.fx = {}; G.shots = [];
+  try { _updAbMP(dt * 2); }
+  finally { const made = G.shots; Object.assign(G, keep); G.shots = keep.shots.concat(made); }
+};
+const _updPrMP = updatePranks;
+updatePranks = function (dt) {
+  if (!(G && G.mpHost && MP && MP.inSim)) return _updPrMP(dt);
+  if (MP.first) return _updPrMP(dt * 2);
+  const F = G.flingers, Bm = G.booms, PI = G.prankIntro;
+  G.flingers = []; G.booms = []; G.prankIntro = null;
+  try { _updPrMP(dt * 2); } finally { G.flingers = F.concat(G.flingers); G.booms = Bm.concat(G.booms); G.prankIntro = PI || G.prankIntro; }
+};
+const _updExMP = updateExtras;
+updateExtras = function (dt) {
+  if (!(G && G.mpHost && MP && MP.inSim && MP.pass === 1)) return _updExMP(dt);
+  const pal = G.pal; G.pal = null;   // the pal follows the host's boat only
+  try { _updExMP(dt); } finally { G.pal = pal; }
+};
+const _catchDuckMP = catchDuck;
+catchDuck = function (d, fromHop) { const r = _catchDuckMP(d, fromHop); if (r && G.mpHost) d._tb = G.boat; return r; };
+const _showWinMP = showWin, _showLoseMP = showLose;
+showWin = function () {
+  if (G && G.mpHost && MP && MP.inSim) { MP.show = () => showWin(); return; }
+  if (G && G.mpGuest) { const lv = PROFILE.level; _showWinMP(); if (G.L > lv) PROFILE.level = lv; mpGuestEndScreen(); return; }
+  return _showWinMP();
+};
+showLose = function () {
+  if (G && G.mpHost && MP && MP.inSim) { MP.show = () => showLose(); return; }
+  _showLoseMP(); if (G && G.mpGuest) mpGuestEndScreen();
+};
+/* sounds the guest should hear too */
+Object.keys(SFX).forEach(n => {
+  const f = SFX[n]; if (typeof f !== 'function') return;
+  SFX[n] = function (...a) { if (MP && G && G.mpHost && !CUR && MP.sfx.length < 40) MP.sfx.push([n, a]); return f.apply(this, a); };
+});
+
+/* ---------- host → guest: what the harbor looks like right now ---------- */
+const SNAP_SKIP = new Set(['parts', 'texts', 'flyers', 'world', 'P', 'S', 'T', 'input', 'target', 'fog', 'flies', 'gemTimes', 'chestTimes', 'paused', 'shown', 'replay', 'mpHost', 'mpGuest', ...SEAT_KEYS]);
+const INTERP_ARRS = ['ducks', 'lurkers', 'pickups', 'beach', 'balls', 'drift', 'shots', 'flingers', 'helpers'];
+const mpRound = (k, v) => typeof v === 'number' ? Math.round(v * 100) / 100 : (k && k[0] === '_' && k !== '_id') ? undefined : v;
+function mpFresh(list, max) { const out = []; for (const p of list) if (!p._s) { p._s = 1; out.push(p); } return out.slice(-max); }
+function mpSendSnap() {
+  const M = MP, s1 = M.seats[1], o = {};
+  for (const k of INTERP_ARRS) for (const e of (G[k] || [])) if (e && typeof e === 'object' && !e._id) e._id = ++M.nid;
+  for (const k in G) if (!SNAP_SKIP.has(k) && typeof G[k] !== 'function') o[k] = G[k];
+  o.me = { boat: s1.boat, cd: s1.cd, magnetT: s1.magnetT, super: s1.super, superReady: s1.superReady, coins: s1.coins, gems: s1.gems };
+  o.other = G.boat; o.np = mpFresh(G.parts, 90); o.nt = mpFresh(G.texts, 12); o.sfx = M.sfx.splice(0);
+  let str;
+  try { str = JSON.stringify(o, mpRound); }
+  catch (e) { const seen = new WeakSet(); str = JSON.stringify(o, (k, v) => { if (v && typeof v === 'object') { if (seen.has(v)) return undefined; seen.add(v); } return mpRound(k, v); }); }
+  M.lastSize = str.length; M.net.send('S' + str);
+}
+
+/* ---------- guest ---------- */
+function mpGuestStart(d) {
+  const M = MP; if (!M) return;
+  M.starting = true; startGame(d.L); M.starting = false;
+  G.mpGuest = true; G.P = d.P; G.mode = d.mode; G.hearts = G.heartsMax = d.hearts;
+  M.next = null; M.otherBoat = null; M.myCoins = 0; M.myGems = 0; M.ended = false; M.at = performance.now();
+  M.ui('playing');
+}
+function mpLink(e, pe) { e._nx = e.x; e._ny = e.y; if (pe && pe._nx != null) { e._px = pe._nx; e._py = pe._ny; } else { e._px = e.x; e._py = e.y; } }
+function mpApplySnap(str) {
+  const M = MP; if (!G || !G.mpGuest) return;
+  let o; try { o = JSON.parse(str.slice(1)); } catch (e) { return; }
+  const prev = M.next, idx = new Map();
+  if (prev) for (const k of INTERP_ARRS) for (const e of (prev[k] || [])) if (e && e._id) idx.set(e._id, e);
+  for (const k of INTERP_ARRS) for (const e of (o[k] || [])) if (e && typeof e.x === 'number') mpLink(e, e._id ? idx.get(e._id) : null);
+  for (const k of ['boss', 'pal']) if (o[k] && typeof o[k].x === 'number') mpLink(o[k], prev && prev[k]);
+  for (const [k, e] of [['boat', o.me.boat], ['other', o.other]]) { mpLink(e, prev && prev[k]); e._na = e.a; e._pa = prev && prev[k] ? prev[k]._na : e.a; }
+  // effects and sounds
+  for (const p of o.np) G.parts.push(p);
+  for (const t of o.nt) G.texts.push(t);
+  for (const [n, a] of o.sfx) try { SFX[n] && SFX[n](...a); } catch (e) {}
+  // my coins and gems land in my own profile
+  const me = o.me, dc = (me.coins || 0) - M.myCoins, dg = (me.gems || 0) - M.myGems;
+  if (dc > 0) { PROFILE.coins += dc; PROFILE.stats.coins += dc; G.coins = me.coins; fly(G.boat.x, G.boat.y - 20, 'coin', dc); }
+  if (dg > 0) { PROFILE.gems += dg; G.gems = me.gems; fly(G.boat.x, G.boat.y - 20, 'gem', dg); }
+  M.myCoins = me.coins || 0; M.myGems = me.gems || 0;
+  for (const k of ['cd', 'magnetT', 'super', 'superReady']) G[k] = me[k];
+  for (const k in o) if (!(k in { me: 1, other: 1, np: 1, nt: 1, sfx: 1 })) G[k] = o[k];
+  G.boat = me.boat; M.otherBoat = o.other;
+  const now = performance.now(); if (M.at) M.gap = clamp(M.gap * 0.8 + (now - M.at) / 1000 * 0.2, 0.03, 0.2); M.at = now;
+  M.next = { boat: me.boat, other: o.other, boss: o.boss, pal: o.pal }; for (const k of INTERP_ARRS) M.next[k] = o[k];
+}
+function mpGuestTick(dt) {
+  const M = MP; if (!M) return;
+  const k = clamp((performance.now() - M.at) / 1000 / M.gap, 0, 1), N = M.next;
+  if (N) {
+    const lerpE = e => { if (e && e._nx != null) { e.x = e._px + (e._nx - e._px) * k; e.y = e._py + (e._ny - e._py) * k; } };
+    for (const kk of INTERP_ARRS) (N[kk] || []).forEach(lerpE);
+    lerpE(N.boss); lerpE(N.pal);
+    for (const b of [N.boat, N.other]) if (b) { lerpE(b); if (b._na != null) b.a = b._pa + angDiff(b._pa, b._na) * k; }
+  }
+  for (const d of G.ducks) d.ph += dt * 9;
+  for (const d of G.beach) d.ph += dt * (G.won ? 14 : 6);
+  // send my steering ~20 times a second, and at once when I let go
+  M.inT += dt;
+  const inp = G.input || { x: 0, y: 0 }, key = (Math.round(inp.x * 50) / 50) + ',' + (Math.round(inp.y * 50) / 50);
+  if (M.inT >= 0.05 || (key === '0,0' && M.lastIn !== '0,0')) { M.inT = 0; if (key !== M.lastIn || Math.random() < 0.1) { M.lastIn = key; M.net.send({ t: 'in', x: Math.round(inp.x * 100) / 100, y: Math.round(inp.y * 100) / 100 }); } }
+  if (!M.ended && ((G.won && G.endT > (G.isBoss ? 3 : 2.6)) || (G.over && G.endT > 1.3))) { M.ended = true; G.shown = true; if (G.won) showWin(); else showLose(); }
+}
+function mpGuestEndScreen() {
+  ['btn-next', 'btn-retry'].forEach(id => { $(id).hidden = true; });
+  let n = $('mp-wait'); if (!n) { n = document.createElement('p'); n.id = 'mp-wait'; n.className = 'mp-wait'; }
+  n.textContent = `Waiting for ${(MP && MP.peer && MP.peer.name) || 'your friend'} to pick what's next…`;
+  const card = $(CUR === 'scr-lose' ? 'scr-lose' : 'scr-win').querySelector('.card'); card.insertBefore(n, card.querySelector('.row'));
+  n.hidden = false;
+}
+/* guest buttons go to the host instead */
+$('pad').addEventListener('pointerdown', e => {
+  if (!(G && G.mpGuest && MP)) return;
+  const b = e.target.closest('.act'); if (!b) return;
+  e.preventDefault(); e.stopPropagation(); Sound.init();
+  let a = null;
+  if (b.id === 'btn-jump') a = { t: 'act', a: 'jump' };
+  else if (b.id === 'btn-super') a = { t: 'act', a: 'super' };
+  else if (b.id.startsWith('slot-')) a = { t: 'act', a: 'ab', id: PROFILE.slots[+b.id.slice(5)] };
+  if (a) { MP.net.send(a); SFX.click(); }
+}, true);
+
+/* ---------- both: draw the other boat with its own captain ---------- */
+function mpOtherBoat() { if (!MP || !G) return null; if (G.mpHost && MP.seats) return MP.seats[1].boat; if (G.mpGuest) return MP.otherBoat; return null; }
+const _drawBoatMP = drawBoat;
+drawBoat = function (c, b, t) {
+  const o = G && b === G.boat && !(MP && MP.drawing) ? mpOtherBoat() : null;
+  if (o && MP.peer) {
+    const keep = PROFILE; MP.drawing = true; PROFILE = MP.peer;
+    try { _drawBoatMP(c, o, t); } finally { PROFILE = keep; MP.drawing = false; }
+    c.save(); c.font = "20px 'Lilita One', sans-serif"; c.textAlign = 'center'; c.lineJoin = 'round'; c.lineWidth = 5; c.strokeStyle = 'rgba(20,59,82,.85)'; c.fillStyle = '#fff';
+    const nm = String(MP.peer.name || 'Friend').slice(0, 14); c.strokeText(nm, o.x, o.y - 58); c.fillText(nm, o.x, o.y - 58); c.restore();
+  }
+  return _drawBoatMP(c, b, t);
+};
+
+/* ---------- level start and leaving ---------- */
+const _startGameMP = startGame;
+startGame = function (L) {
+  $('btn-next').hidden = $('btn-retry').hidden = false; const mw = $('mp-wait'); if (mw) mw.hidden = true;
+  _startGameMP(L);
+  if (MP && MP.role === 'host' && mpConnected() && G) {
+    mpSetupHostLevel();
+    MP.net.send({ t: 'start', L, P: G.P, mode: G.mode, hearts: G.hearts });
+  }
+};
+const _leaveGameMP = leaveGame;
+leaveGame = function () {
+  const host = !!(G && G.mpHost), guest = !!(G && G.mpGuest);
+  _leaveGameMP();
+  if (host && mpConnected()) MP.net.send({ t: 'home' });
+  if (guest && MP) { MP.ui('connected'); show('scr-together'); }
+};
+const _restartMP = restartLevel, _nextMP = nextFromWin;
+restartLevel = function () { if (G && G.mpGuest) return; return _restartMP(); };
+nextFromWin = function () { if (G && G.mpGuest) return; return _nextMP(); };
+/* ---------- Play Together screen: host with a code, or join by typing it ---------- */
+SCREENS.push('scr-together');
+let MP_ENTRY = '', MP_JOIN_TM = 0;
+const mpPanel = id => ['mp-pick', 'mp-hosting', 'mp-joining'].forEach(p => { $(p).hidden = p !== id; });
+const mpSay = (id, text) => { $(id).textContent = text; };
+const peerName = () => (MP && MP.peer && MP.peer.name) || 'your friend';
+function mpNetError(t) {
+  if (t === 'peer-unavailable') return 'No game with that code. Check the number on the other device and try again.';
+  if (t === 'browser-incompatible') return 'This browser can’t play together. Try Chrome or Safari.';
+  return 'Couldn’t reach the internet. Check the Wi-Fi on both devices and try again.';
+}
+function mpUi(state, arg) {
+  if (!MP && !['lost', 'stopped'].includes(state)) return;
+  const host = MP && MP.role === 'host';
+  if (state === 'connected') {
+    if (host) { mpPanel('mp-hosting'); mpSay('mp-host-status', `${peerName()} is here!`); $('btn-mp-start').hidden = false; $('btn-mp-start').innerHTML = `${icon('play')}Start Level ${PROFILE.level}`; }
+    else { clearTimeout(MP_JOIN_TM); mpPanel('mp-joining'); $('mp-pad').hidden = true; mpSay('mp-join-status', `Connected to ${peerName()}! Waiting for them to start a level…`); }
+    SFX.ready();
+  } else if (state === 'waiting') { mpSay('mp-host-status', 'Waiting for a friend…'); $('btn-mp-start').hidden = true; }
+  else if (state === 'version') { mpSay(host ? 'mp-host-status' : 'mp-join-status', 'Both devices need the same version of Quack Harbor. Update the older one, then try again.'); }
+  else if (state === 'error') {
+    if (host) mpSay('mp-host-status', mpNetError(arg));
+    else { clearTimeout(MP_JOIN_TM); mpStop(true); mpJoinReset(mpNetError(arg)); }
+  } else if (state === 'lost') { mpPanel('mp-pick'); mpSay('mp-pick-msg', 'The connection was lost. Start again when you’re ready.'); if (!G) show('scr-together'); }
+  else if (state === 'stopped') { mpPanel('mp-pick'); mpSay('mp-pick-msg', ''); }
+  mpHomeLabel();
+}
+function mpHomeLabel() { const b = $('btn-together'); if (b) b.innerHTML = `${icon('boat')}${mpConnected() ? 'Playing with ' + String(peerName()).slice(0, 14) : 'Play together'}`; }
+function mpHostBegin(tries = 0) {
+  mpPanel('mp-hosting'); $('btn-mp-start').hidden = true;
+  const code = mpTestMode() && window.MP_TEST_CODE ? MP_TEST_CODE : String(randi(1000, 9999));
+  $('mp-code').textContent = code; mpSay('mp-host-status', 'Getting your code ready…');
+  mpStart('host', code, mpUi).then(M => { if (MP === M && !M.live) mpSay('mp-host-status', 'Waiting for a friend…'); })
+    .catch(t => { if (t === 'unavailable-id' && tries < 4) return mpHostBegin(tries + 1); MP = null; mpSay('mp-host-status', mpNetError(t)); });
+}
+function mpJoinReset(msg) { MP_ENTRY = ''; mpPanel('mp-joining'); $('mp-pad').hidden = false; $('mp-entry').textContent = '· · · ·'; mpSay('mp-join-status', msg || ''); }
+function mpJoinKey(k) {
+  if (MP) return;
+  if (k === 'del') MP_ENTRY = MP_ENTRY.slice(0, -1); else if (MP_ENTRY.length < 4) MP_ENTRY += k;
+  $('mp-entry').textContent = (MP_ENTRY + '····').slice(0, 4).split('').join(' ');
+  SFX.click();
+  if (MP_ENTRY.length === 4) {
+    const code = MP_ENTRY; mpSay('mp-join-status', 'Looking for that game…');
+    mpStart('guest', code, mpUi).catch(t => { MP = null; mpJoinReset(mpNetError(t)); });
+    clearTimeout(MP_JOIN_TM);
+    MP_JOIN_TM = setTimeout(() => { if (MP && MP.role === 'guest' && !MP.live) { mpStop(true); mpJoinReset('No game with that code answered. Check the number and try again.'); } }, 12000);
+  }
+}
+function openTogether() {
+  show('scr-together');
+  if (!MP) { mpPanel('mp-pick'); return; }
+  if (MP.role === 'host') { mpPanel('mp-hosting'); $('mp-code').textContent = MP.code; if (MP.live) mpUi('connected'); }
+  else { mpPanel('mp-joining'); $('mp-pad').hidden = !!MP.live; }
+}
+(() => {
+  const pad = $('mp-pad');
+  ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'del', '0'].forEach(k => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'mp-key' + (k === 'del' ? ' del' : ''); b.textContent = k === 'del' ? '⌫' : k;
+    if (k === 'del') b.setAttribute('aria-label', 'Delete'); b.addEventListener('click', () => mpJoinKey(k)); pad.append(b);
+  });
+  $('btn-together').addEventListener('click', () => { SFX.click(); openTogether(); });
+  $('btn-mp-host').addEventListener('click', () => { SFX.click(); mpHostBegin(); });
+  $('btn-mp-join').addEventListener('click', () => { SFX.click(); mpJoinReset(''); });
+  $('btn-mp-start').addEventListener('click', () => { SFX.click(); startGame(PROFILE.level); });
+  $('btn-mp-stop').addEventListener('click', () => { SFX.click(); mpStop(); });
+  $('btn-mp-leave').addEventListener('click', () => { SFX.click(); clearTimeout(MP_JOIN_TM); if (MP) mpStop(); else mpPanel('mp-pick'); });
+  mpHomeLabel();
+})();
+const _renderHomeMP = renderHome;
+renderHome = function () { const r = _renderHomeMP.apply(this, arguments); mpHomeLabel(); return r; };
+/* the guest heading home mid-level hands the harbor back to the host */
+const _leaveGuestMP = leaveGame;
+leaveGame = function () { if (G && G.mpGuest && mpConnected()) MP.net.send({ t: 'left' }); return _leaveGuestMP(); };
+const _onDataMP = mpOnData;
+mpOnData = function (d) {
+  if (d && d.t === 'left' && MP && MP.role === 'host') { if (G && G.mpHost) { mpDropGuest(); toast(`${peerName()} went back to the dock`, 'Start a new level to play together again.', 'boat'); } return; }
+  return _onDataMP(d);
+};
+const _guestStartMP = mpGuestStart;
+mpGuestStart = function (d) { _guestStartMP(d); $('btn-restart').hidden = true; };
+const _startGameUiMP = startGame;
+startGame = function (L) { if (!(MP && MP.role === 'guest')) $('btn-restart').hidden = false; return _startGameUiMP(L); };
 
 </script>
 <script>if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));</script>

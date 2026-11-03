@@ -1,6 +1,6 @@
-Quack Harbor v1.5.1
+Quack Harbor v1.6
 
-Files: index.html, sw.js, manifest.webmanifest, and four icon PNGs.
+Files: index.html, sw.js, manifest.webmanifest, peerjs.min.js (for Play together), and four icon PNGs.
 Put all of them in the top folder of a GitHub Pages repo (or any static host).
 
 Updating later: replace the files, and the service worker picks up the
