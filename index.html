@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#1fb0d3">
-<meta name="app-version" content="1.6">
+<meta name="app-version" content="1.7">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -277,6 +277,13 @@ body.gutters .act-jump .ic{width:36px;height:36px;}
 .mp-key:active{transform:translateY(3px);box-shadow:0 2px 0 var(--line);}
 .mp-key.del{grid-column:1;font-size:26px;color:var(--muted);}
 .mp-wait{text-align:center;font-weight:800;color:var(--muted);text-wrap:balance;}
+.chip.rival{gap:6px;}
+.chip.rival small{font-size:13px;font-weight:900;color:var(--muted);max-width:7em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.vs-board{display:flex;align-items:center;justify-content:center;gap:18px;}
+.vs-p{display:grid;justify-items:center;gap:2px;}
+.vs-p b{font-family:var(--f-display);font-weight:400;font-size:44px;line-height:1;color:var(--ink);}
+.vs-p small{font-weight:900;color:var(--muted);}
+.vs-x{font-family:var(--f-display);font-size:24px;color:var(--muted);}
 /* Alpha 3: power buttons, super, shop tabs */
 #pad{display:flex;align-items:flex-end;gap:12px;}
 .pad-slots{display:flex;flex-direction:column;gap:12px;}
@@ -496,6 +503,7 @@ body.gutters #pad #btn-jump .ic{width:32px;height:32px;}
     <div class="chip hearts" id="hud-hearts" aria-label="Hearts"></div>
     <div class="chip goal" aria-label="Ducks delivered"><span class="ic" id="hud-goal-ic" data-ic="duck"></span><div class="bar"><i id="hud-bar"></i></div><b id="hud-goal">0/5</b></div>
     <div class="chip seats" id="hud-seats" aria-label="Ducks in your boat"></div>
+    <div class="chip rival" id="hud-rival" hidden aria-label="Your friend's ducks"><small id="hud-rival-name"></small><span class="ic" data-ic="duck"></span><b id="hud-rival-n">0</b></div>
   </div>
   <div class="hud-side right">
     <div class="chip" id="chip-coins"><span class="ic" data-ic="coin"></span><b id="hud-coins">0</b></div>
@@ -521,7 +529,7 @@ body.gutters #pad #btn-jump .ic{width:32px;height:32px;}
     <p class="tag">Who's sailing today?</p>
     <div class="players" id="players-list"></div>
     <div class="players-tools"><button class="link" id="btn-manage">Remove a player</button></div>
-    <p class="ver">Quack Harbor v1.6</p>
+    <p class="ver">Quack Harbor v1.7</p>
   </div>
 </section>
 
@@ -654,6 +662,7 @@ body.gutters #pad #btn-jump .ic{width:32px;height:32px;}
       <div class="mp-code" id="mp-code">····</div>
       <p class="mp-status" id="mp-host-status">Waiting for a friend…</p>
       <button class="btn big go" id="btn-mp-start" hidden>Start</button>
+      <button class="btn big warm" id="btn-mp-vs" hidden><span class="ic" data-ic="bolt"></span>Duck race</button>
       <div class="links"><button class="link" id="btn-mp-stop">Stop playing together</button></div>
     </div>
     <div id="mp-joining" hidden>
@@ -663,6 +672,16 @@ body.gutters #pad #btn-jump .ic{width:32px;height:32px;}
       <p class="mp-status" id="mp-join-status"></p>
       <div class="links"><button class="link" id="btn-mp-leave">Leave</button></div>
     </div>
+  </div>
+</section>
+<section class="screen clear" id="scr-vs" hidden>
+  <div class="card">
+    <h2 id="vs-title">You win the race!</h2>
+    <div class="vs-board"><div class="vs-p"><div class="avatar sm" id="vs-av-me"></div><b id="vs-me">0</b><small>You</small></div><span class="vs-x">vs</span><div class="vs-p"><div class="avatar sm" id="vs-av-them"></div><b id="vs-them">0</b><small id="vs-them-name">Friend</small></div></div>
+    <div class="rewards" id="vs-rewards"></div>
+    <button class="btn big go" id="btn-vs-again"><span class="ic" data-ic="bolt"></span>Race again</button>
+    <p class="mp-wait" id="vs-wait" hidden></p>
+    <div class="row"><button class="btn" id="btn-vs-home">Home</button></div>
   </div>
 </section>
 <section class="screen" id="scr-pause" hidden>
@@ -7278,7 +7297,7 @@ renderYard = function (tab) {
    ===================================================================== */
 let FRAME_ERRS = 0, HALTED = false, SAVE_T = 0, SAVE_SIG = '';
 function noteError(err) {
-  try { localStorage.setItem('quackHarbor.lastError', JSON.stringify({ t: Date.now(), ver: '1.6', level: G && G.L, msg: String((err && err.message) || err), stack: String((err && err.stack) || '').slice(0, 1500) })); } catch (e) {}
+  try { localStorage.setItem('quackHarbor.lastError', JSON.stringify({ t: Date.now(), ver: '1.7', level: G && G.L, msg: String((err && err.message) || err), stack: String((err && err.stack) || '').slice(0, 1500) })); } catch (e) {}
 }
 function failSafe() {
   if (HALTED) return; HALTED = true;
@@ -7690,6 +7709,7 @@ function mpSendSnap() {
   for (const k of INTERP_ARRS) for (const e of (G[k] || [])) if (e && typeof e === 'object' && !e._id) e._id = ++M.nid;
   for (const k in G) if (!SNAP_SKIP.has(k) && typeof G[k] !== 'function') o[k] = G[k];
   o.me = { boat: s1.boat, cd: s1.cd, magnetT: s1.magnetT, super: s1.super, superReady: s1.superReady, coins: s1.coins, gems: s1.gems };
+  if (G.vs) o.vsd = [M.seats[0].delivered || 0, s1.delivered || 0];
   o.other = G.boat; o.np = mpFresh(G.parts, 90); o.nt = mpFresh(G.texts, 12); o.sfx = M.sfx.splice(0);
   let str;
   try { str = JSON.stringify(o, mpRound); }
@@ -7724,7 +7744,8 @@ function mpApplySnap(str) {
   if (dg > 0) { PROFILE.gems += dg; G.gems = me.gems; fly(G.boat.x, G.boat.y - 20, 'gem', dg); }
   M.myCoins = me.coins || 0; M.myGems = me.gems || 0;
   for (const k of ['cd', 'magnetT', 'super', 'superReady']) G[k] = me[k];
-  for (const k in o) if (!(k in { me: 1, other: 1, np: 1, nt: 1, sfx: 1 })) G[k] = o[k];
+  for (const k in o) if (!(k in { me: 1, other: 1, np: 1, nt: 1, sfx: 1, vsd: 1 })) G[k] = o[k];
+  if (o.vsd) { G.vsThem = o.vsd[0]; G.delivered = o.vsd[1]; }
   G.boat = me.boat; M.otherBoat = o.other;
   const now = performance.now(); if (M.at) M.gap = clamp(M.gap * 0.8 + (now - M.at) / 1000 * 0.2, 0.03, 0.2); M.at = now;
   M.next = { boat: me.boat, other: o.other, boss: o.boss, pal: o.pal }; for (const k of INTERP_ARRS) M.next[k] = o[k];
@@ -7786,7 +7807,7 @@ startGame = function (L) {
   _startGameMP(L);
   if (MP && MP.role === 'host' && mpConnected() && G) {
     mpSetupHostLevel();
-    MP.net.send({ t: 'start', L, P: G.P, mode: G.mode, hearts: G.hearts });
+    MP.net.send({ t: 'start', L, P: G.P, mode: G.mode, hearts: G.hearts, vs: !!G.vs });
   }
 };
 const _leaveGameMP = leaveGame;
@@ -7881,6 +7902,171 @@ const _guestStartMP = mpGuestStart;
 mpGuestStart = function (d) { _guestStartMP(d); $('btn-restart').hidden = true; };
 const _startGameUiMP = startGame;
 startGame = function (L) { if (!(MP && MP.role === 'guest')) $('btn-restart').hidden = false; return _startGameUiMP(L); };
+/* =====================================================================
+   v1.7 DUCK RACE — two captains, one harbor. First to bring home the
+   target number of ducks wins. Rams, Twirl, Horn, bubbles, Lullaby,
+   Freeze and Supers mess with the other boat, and any ducks it spills
+   are up for grabs. Nobody loses hearts; a hit just costs ducks and time.
+   ===================================================================== */
+SCREENS.push('scr-vs');
+const VS_TARGET = () => (G && G.mode === 'little' ? 5 : 7);
+const vsLevel = () => Math.floor(((PROFILE.level - 1) % LOOP_LEN) / LEVELS_PER_WORLD) * LEVELS_PER_WORLD + 3;
+function startVs() { if (!(MP && MP.role === 'host' && mpConnected())) return; MP.vsNext = true; startGame(vsLevel()); }
+
+/* each boat keeps its own score */
+const _seatSaveVS = seatSave, _seatLoadVS = seatLoad;
+seatSave = function (s) { _seatSaveVS(s); if (G && G.vs) s.delivered = G.delivered; };
+seatLoad = function (s) { _seatLoadVS(s); if (G && G.vs) G.delivered = s.delivered || 0; if (MP && MP.seats) MP.cur = Math.max(0, MP.seats.indexOf(s)); };
+const _setupVS = mpSetupHostLevel;
+mpSetupHostLevel = function () {
+  _setupVS();
+  const vs = !!MP.vsNext; MP.vsNext = false; G.vs = vs; MP.cur = 0;
+  if (!vs) return;
+  G.P = { ...G.P, goal: VS_TARGET(), hurts: false, maxDucks: (G.P.maxDucks || 3) + 2, spawnGap: (G.P.spawnGap || 3) * 0.7 };
+  G.delivered = 0; G.vsWinner = -1; G.hearts = G.heartsMax = 0;
+  MP.seats[0].delivered = MP.seats[1].delivered = 0;
+  const b0 = MP.seats[0].boat, b1 = MP.seats[1].boat, mid = b0.x;
+  b0.x = clamp(mid - 130, 80, W - 80); b1.x = clamp(mid + 130, 80, W - 80); b1.y = b0.y;
+  vsBanner();
+};
+function vsBanner() { $('banner-title').textContent = 'Duck race!'; $('banner-sub').textContent = `First to bring home ${G.P.goal} ducks wins. Ram with Turbo, spin with Twirl, and grab any ducks that fall out!`; }
+const vsRival = () => (G && G.vs && G.mpHost && MP && MP.seats) ? MP.seats[1 - (MP.cur || 0)].boat : null;
+
+/* ---------- what happens to the other boat ---------- */
+function vsSpill(rb, n) {
+  let k = 0;
+  for (let i = rb.seats.length - 1; i >= 0 && k < n; i--) {
+    const s = rb.seats[i]; if (s.prank) continue;
+    rb.seats.splice(i, 1); k++;
+    const a = rand(0, 7);
+    G.ducks.push({ isl: 0, state: 'swim', x: rb.x + Math.cos(a) * 46, y: rb.y + Math.sin(a) * 46, vx: Math.cos(a) * 90, vy: Math.sin(a) * 90, t: 0, face: 1, gold: s.gold, pers: s.pers, seed: rand(0, 99), ph: 0 });
+  }
+  if (k) say(rb.x, rb.y - 100, k > 1 ? 'Ducks overboard!' : 'Duck overboard!', '#ffd6d0', 28, 1.3);
+  return k;
+}
+function vsStun(rb, t, word) {
+  if (rb.invT > 0 || rb.jumpT > 0 || rb.beamT > 0) return false;
+  rb.hitT = Math.max(rb.hitT, t); rb.spd = 0; rb.vx *= 0.2; rb.vy *= 0.2; rb.invT = Math.max(rb.invT, t + 1); rb.twirlT = Math.max(rb.twirlT || 0, 0.6);
+  say(rb.x, rb.y - 64, word, '#fff', 36); SFX.boing(); burst(rb.x, rb.y, 16, { col: ['#fff', '#ffe27a', '#bdf3ff'], type: 'spark', min: 60, max: 200 });
+  return true;
+}
+function vsSlow(rb, t, word, col) { if (rb.jumpT > 0 || rb.beamT > 0) return; rb.vsSlowT = Math.max(rb.vsSlowT || 0, t); say(rb.x, rb.y - 64, word, col || '#bde9ff', 32); }
+function vsKnock(rb, from, px) {
+  const dx = rb.x - from.x, dy = rb.y - from.y, d = Math.hypot(dx, dy) || 1;
+  rb.x = clamp(rb.x + dx / d * px, rb.r, W - rb.r); rb.y = clamp(rb.y + dy / d * px, SHORE + rb.r, H - rb.r); collideWorld(rb, rb.r);
+}
+const vsNear = (rb, R) => rb && dist(G.boat.x, G.boat.y, rb.x, rb.y) < R + rb.r;
+const _twirlVS = POWER_FX.twirl, _hornVS = POWER_FX.horn, _lullVS = POWER_FX.lullaby, _freezeVS = POWER_FX.freeze;
+POWER_FX.twirl = function () { _twirlVS(); const rb = vsRival(); if (vsNear(rb, abPow('twirl')) && vsStun(rb, 0.9, 'Spun!')) vsSpill(rb, 1); };
+POWER_FX.horn = function () { _hornVS(); const rb = vsRival(); if (vsNear(rb, abPow('horn'))) { vsKnock(rb, G.boat, 150); vsSlow(rb, 1.2, 'Whoa!', '#ffc531'); } };
+POWER_FX.lullaby = function () { _lullVS(); const rb = vsRival(); if (rb) vsSlow(rb, 2.5, 'Sleepy…', '#d9c6ff'); };
+POWER_FX.freeze = function () { _freezeVS(); const rb = vsRival(); if (rb) vsSlow(rb, 2, 'Brrr!', '#bde9ff'); };
+const _superVS = useSuper;
+useSuper = function () {
+  const was = G && G.super; _superVS();
+  if (G && G.vs && was >= 1 && G.super < 1) { const rb = vsRival(); if (rb && vsStun(rb, 1.4, 'Wow!')) vsSpill(rb, 1); }
+};
+/* bubbles remember who blew them, and pop on the other boat */
+const _abVS = updateAbilities;
+updateAbilities = function (dt) { const r = _abVS(dt); if (G && G.vs && MP) for (const s of G.shots) if (s.own == null) s.own = MP.cur || 0; return r; };
+/* a slowed boat crawls */
+const _boatVS = updateBoat;
+updateBoat = function (dt) {
+  const b = G && G.boat;
+  if (!(G && G.vs && b && b.vsSlowT > 0)) return _boatVS(dt);
+  b.vsSlowT -= MP && MP.inSim ? dt * 2 : dt;
+  const S = G.S, sp = S.speed; S.speed = sp * 0.45;
+  try { return _boatVS(dt); } finally { S.speed = sp; }
+};
+/* once a frame, after both boats moved: bumps, rams and bubble hits */
+function vsFrame() {
+  const A = MP.seats[0].boat, B = MP.seats[1].boat;
+  for (const s of G.shots.slice()) {
+    if (s.own == null) continue;
+    const rb = MP.seats[1 - s.own].boat;
+    if (rb.jumpT <= 0 && dist(s.x, s.y, rb.x, rb.y) < rb.r + (s.r || 12)) {
+      G.shots = G.shots.filter(x => x !== s); burst(s.x, s.y, 8, { col: ['#fff', '#bde9ff'], max: 100 }); SFX.pop();
+      vsSlow(rb, 2, 'Bubbled!');
+    }
+  }
+  if (A.jumpT > 0 || B.jumpT > 0 || A.beamT > 0 || B.beamT > 0 || G.won) return;
+  const dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy) || 0.01, m = A.r + B.r;
+  if (d >= m) return;
+  const nx = dx / d, ny = dy / d, push = (m - d) / 2;
+  A.x -= nx * push; A.y -= ny * push; B.x += nx * push; B.y += ny * push; collideWorld(A, A.r); collideWorld(B, B.r);
+  const ramA = A.turboT > 0 || A.giantT > 0, ramB = B.turboT > 0 || B.giantT > 0;
+  if (ramA && !ramB) { if (vsStun(B, 0.7, 'Bonk!')) { vsSpill(B, 1); vsKnock(B, A, 70); } }
+  else if (ramB && !ramA) { if (vsStun(A, 0.7, 'Bonk!')) { vsSpill(A, 1); vsKnock(A, B, 70); } }
+  else if ((A.bumpT || 0) <= 0) { A.bumpT = B.bumpT = 0.5; SFX.boing(); }
+}
+const _ugVS = updateGame;
+updateGame = function (dt) { const r = _ugVS(dt); if (G && G.vs && G.mpHost && MP && MP.seats && !G.paused) vsFrame(); return r; };
+/* each captain's ducks line up on their own end of the beach */
+function vsMirrorBeach(n0) { if (!(G && G.vs && MP && MP.cur === 1)) return; for (let i = n0; i < G.beach.length; i++) { const e = G.beach[i]; e.tx = W - e.tx; e.face = -(e.face || 1); } }
+const _deliverVS = deliver;
+deliver = function () { const n0 = G.beach.length, r = _deliverVS.apply(this, arguments); vsMirrorBeach(n0); return r; };
+const _shoreVS = sendDuckToShore;
+sendDuckToShore = function (d) { const n0 = G.beach.length, r = _shoreVS(d); vsMirrorBeach(n0); return r; };
+
+/* ---------- the finish ---------- */
+const _winLevelVS = winLevel;
+winLevel = function () { if (G && G.vs && !G.won) G.vsWinner = MP ? (MP.cur || 0) : 0; return _winLevelVS(); };
+const _showWinVS = showWin;
+showWin = function () {
+  if (G && G.vs) { if (G.mpHost && MP && MP.inSim) { MP.show = () => showWin(); return; } return vsResult(); }
+  return _showWinVS();
+};
+function vsResult() {
+  const host = !!G.mpHost || !G.mpGuest, iWon = G.vsWinner === (host ? 0 : 1);
+  const me = G.delivered || 0, them = host ? (MP && MP.seats ? MP.seats[1].delivered || 0 : G.vsThem || 0) : (G.vsThem || 0);
+  const bonus = iWon ? 25 : 10; PROFILE.coins += bonus; PROFILE.stats.coins += bonus; persist();
+  $('vs-title').textContent = iWon ? 'You win the race!' : `${peerName()} wins the race!`;
+  $('vs-me').textContent = me; $('vs-them').textContent = them; $('vs-them-name').textContent = String(peerName()).slice(0, 14);
+  paintAvatarEl($('vs-av-me'), PROFILE); if (MP && MP.peer) paintAvatarEl($('vs-av-them'), MP.peer);
+  $('vs-rewards').innerHTML = `<div class="pill">${icon('coin')}<b>+${bonus}</b><small>${iWon ? 'Winner bonus' : 'Good racing'}</small></div><div class="pill">${icon('coin')}<b>+${G.coins || 0}</b><small>Found in the race</small></div>`;
+  $('btn-vs-again').hidden = !(G.mpHost && mpConnected()); $('vs-wait').hidden = !G.mpGuest;
+  $('vs-wait').textContent = `Waiting for ${peerName()} to pick what's next…`;
+  show('scr-vs'); if (iWon) SFX.ready(); else SFX.quack(1.2);
+}
+/* the race needs both boats: if the other one leaves early, head back to the lobby */
+const _dropVS = mpDropGuest;
+mpDropGuest = function () { const racing = !!(G && G.vs && !G.won); _dropVS(); if (racing) setTimeout(() => { if (G && G.vs) { leaveGame(); openTogether(); } }, 0); };
+
+/* ---------- guest side ---------- */
+const _guestStartVS = mpGuestStart;
+mpGuestStart = function (d) { _guestStartVS(d); if (d.vs) { G.vs = true; G.vsThem = 0; G.delivered = 0; G.vsWinner = -1; vsBanner(); } };
+
+/* ---------- drawing and HUD ---------- */
+const _drawBoatVS = drawBoat;
+drawBoat = function (c, b, t) {
+  const r = _drawBoatVS(c, b, t);
+  if (G && G.vs && b === G.boat) for (const o of [mpOtherBoat(), b]) if (o && o.vsSlowT > 0) {
+    c.save(); c.globalAlpha = 0.55 + 0.15 * Math.sin(t * 6); c.fillStyle = 'rgba(189,233,255,.3)'; c.strokeStyle = '#e6f8ff'; c.lineWidth = 4;
+    c.beginPath(); c.arc(o.x, o.y, o.r * 1.55, 0, Math.PI * 2); c.fill(); c.stroke();
+    c.fillStyle = 'rgba(255,255,255,.8)'; c.beginPath(); c.arc(o.x - o.r * 0.6, o.y - o.r * 0.7, o.r * 0.22, 0, Math.PI * 2); c.fill(); c.restore();
+  }
+  return r;
+};
+const _hudVS = updateHud;
+updateHud = function () {
+  _hudVS();
+  const el = $('hud-rival'), on = !!(G && G.vs); if (el.hidden === on) el.hidden = !on;
+  if (!on) return;
+  const them = G.mpHost && MP && MP.seats ? MP.seats[1].delivered || 0 : (G.vsThem || 0), k = `${them}/${G.P.goal}/${peerName()}`;
+  if (el.dataset.k !== k) { el.dataset.k = k; $('hud-rival-n').textContent = `${them}/${G.P.goal}`; $('hud-rival-name').textContent = String(peerName()).slice(0, 10); }
+};
+
+/* ---------- lobby: pick co-op or a race ---------- */
+const _mpUiVS = mpUi;
+mpUi = function (state, arg) {
+  _mpUiVS(state, arg);
+  const host = MP && MP.role === 'host', on = host && state === 'connected';
+  if (state === 'connected' || state === 'waiting' || state === 'stopped' || state === 'lost') $('btn-mp-vs').hidden = !on;
+  if (on) $('btn-mp-start').innerHTML = `${icon('heart')}Team up · Level ${PROFILE.level}`;
+};
+$('btn-mp-vs').addEventListener('click', () => { SFX.click(); startVs(); });
+$('btn-vs-again').addEventListener('click', () => { SFX.click(); startVs(); });
+$('btn-vs-home').addEventListener('click', () => { SFX.click(); leaveGame(); });
 
 </script>
 <script>if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));</script>

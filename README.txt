@@ -1,4 +1,4 @@
-Quack Harbor v1.6
+Quack Harbor v1.7
 
 Files: index.html, sw.js, manifest.webmanifest, peerjs.min.js (for Play together), and four icon PNGs.
 Put all of them in the top folder of a GitHub Pages repo (or any static host).
