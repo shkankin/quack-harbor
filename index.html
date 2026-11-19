@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#1fb0d3">
-<meta name="app-version" content="1.8">
+<meta name="app-version" content="1.8.1">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -614,7 +614,7 @@ body.gutters #pad #btn-jump .ic{width:32px;height:32px;}
     <p class="tag">Who's sailing today?</p>
     <div class="players" id="players-list"></div>
     <div class="players-tools"><button class="link" id="btn-manage">Remove a player</button></div>
-    <p class="ver">Quack Harbor v1.8</p>
+    <p class="ver">Quack Harbor v1.8.1</p>
   </div>
 </section>
 
@@ -2367,8 +2367,8 @@ function updateAbilities(dt) {
         burst(st.x, st.y, 22, { type: 'spark', col: ['#ffe27a', '#fff', '#d9c6ff'], min: 80, max: 260 }); ring(st.x, st.y, 'rgba(255,240,180,.95)', 0.6, 120);
         G.lurkers.forEach(h => { const p = lurkerSpot(h); if (dist(st.x, st.y, p.x, p.y) < 180) stunLurker(h, 'dizzyT', 2.4); });
         if (G.boss && dist(st.x, st.y, G.boss.x, G.boss.y) < 200) bossDizzy(2);
-        if (st.gem) G.pickups.push({ kind: 'gem', x: st.x, y: st.y, t: 0, life: 12 });
-        else for (let i = 0; i < 4; i++) G.pickups.push({ kind: 'coin', x: clamp(st.x + rand(-50, 50), 60, W - 60), y: clamp(st.y + rand(-40, 40), SHORE + 50, H - 40), t: 0, life: 12 });
+        if (st.gem) G.pickups.push({ kind: 'gem', x: st.x, y: st.y, t: 0, life: 12, nc: 1 });
+        else for (let i = 0; i < 4; i++) G.pickups.push({ kind: 'coin', x: clamp(st.x + rand(-50, 50), 60, W - 60), y: clamp(st.y + rand(-40, 40), SHORE + 50, H - 40), t: 0, life: 12, nc: 1 });
       }
     }
     if (S.made >= 9 && S.list.every(s => s.done)) G.fx.stars = null;
@@ -2390,8 +2390,8 @@ function updatePickups(dt) {
     else if (d < pull && b.hitT <= 0 && p.kind !== 'power') { const k = Math.min(1, dt * 6) * 0.6; p.x = lerp(p.x, b.x, k); p.y = lerp(p.y, b.y, k); }
     if (dist(b.x, b.y, p.x, p.y) < grab + (p.kind === 'power' ? 14 : 0)) {
       p.dead = true;
-      if (p.kind === 'coin') { addCoins(p.x, p.y, p.big ? ECON.bigCoin : ECON.waterCoin); charge(0.015); coinChime(); burst(p.x, p.y, 8, { col: ['#ffd447', '#fff'], type: 'spark', max: 120 }); }
-      else if (p.kind === 'gem') { addGems(p.x, p.y, 1); charge(0.15); SFX.gem(); say(p.x, p.y - 40, 'Gem!', '#c9b0ff', 36); burst(p.x, p.y, 16, { col: ['#c9b0ff', '#fff', '#9b6bff'], type: 'spark' }); }
+      if (p.kind === 'coin') { addCoins(p.x, p.y, p.big ? ECON.bigCoin : ECON.waterCoin); if (!p.nc) charge(0.015); coinChime(); burst(p.x, p.y, 8, { col: ['#ffd447', '#fff'], type: 'spark', max: 120 }); }
+      else if (p.kind === 'gem') { addGems(p.x, p.y, 1); if (!p.nc) charge(0.15); SFX.gem(); say(p.x, p.y - 40, 'Gem!', '#c9b0ff', 36); burst(p.x, p.y, 16, { col: ['#c9b0ff', '#fff', '#9b6bff'], type: 'spark' }); }
       else if (p.kind === 'chest') openFloatChest(p);
       else {
         SFX.pop(); burst(p.x, p.y, 20, { col: ['#fff', '#bde9ff', '#ffe27a'], type: 'spark', min: 80, max: 220 });
@@ -3475,14 +3475,25 @@ startLevel = function (L) {
 };
 /* later loops pay a bit less, so the collection lasts; the story itself pays full price */
 const encore = () => !!G && !G.pirates && G.L > LOOP_LEN;
+/* v1.8.1: what a coin found in the water is worth. New later-loop levels 0.35; after the story, replays of old
+   levels 0.25 and pirate rematches 0.5, so the next new level is always the best-paying thing to play.
+   Today's Voyage keeps full pay until it has been won that day. */
+function payRate() {
+  if (!G || !PROFILE) return 1;
+  if (G.pirates) return PROFILE.pirates && PROFILE.pirates.wins ? 0.5 : 1;
+  if (G.voyage && !(PROFILE.mis && PROFILE.mis.voyage === todayStr())) return 1;
+  if (G.replay && PROFILE.level > LOOP_LEN) return 0.25;
+  return G.L > LOOP_LEN ? 0.35 : 1;
+}
 const _addCoinsV15 = addCoins;
 addCoins = function (x, y, n) {   // exact on average: fractions carry over, so single coins count too
-  if (encore()) { G.coinAcc = (G.coinAcc || 0) + n * 0.35; n = Math.floor(G.coinAcc); G.coinAcc -= n; if (!n) return; }
+  const rate = payRate();
+  if (rate < 1) { G.coinAcc = (G.coinAcc || 0) + n * rate; n = Math.floor(G.coinAcc); G.coinAcc -= n; if (!n) return; }
   return _addCoinsV15(x, y, n);
 };
 const _addGemsV15 = addGems;
 addGems = function (x, y, n) {
-  if (encore()) { let k = 0; for (let i = 0; i < n; i++) if (Math.random() < 0.5) k++; if (!k) return; n = k; }
+  if (payRate() < 1) { let k = 0; for (let i = 0; i < n; i++) if (Math.random() < 0.5) k++; if (!k) return; n = k; }
   return _addGemsV15(x, y, n);
 };
 /* in later loops creatures aim where the boat is heading, so sailing straight on isn't safe */
@@ -7257,7 +7268,7 @@ BONUS_GAMES.match = {
     const cw = m === 'grown' ? 158 : 176, ch = m === 'grown' ? 196 : 216, gap = 26;
     const x0 = 800 - (cols * cw + (cols - 1) * gap) / 2 + cw / 2, y0 = 570 - (rows * ch + (rows - 1) * gap) / 2 + ch / 2;
     B.cards = deck.map((f, i) => ({ f, x: x0 + (i % cols) * (cw + gap), y: y0 + Math.floor(i / cols) * (ch + gap), up: true, flip: 1, done: false, glow: 0 }));
-    Object.assign(B, { cw, ch, pairs, found: 0, misses: 0, tries: { little: Infinity, big: 6, grown: 3 }[m], pick: [], lockT: 0, peek: { little: 3.2, big: 2.4, grown: 1.5 }[m], peeked: false });
+    Object.assign(B, { cw, ch, pairs, found: 0, misses: 0, tries: { little: Infinity, big: 6, grown: 5 }[m], pick: [], lockT: 0, peek: { little: 3.2, big: 2.4, grown: 2.2 }[m], peeked: false });
   },
   begin(B) { BFX(() => say(800, 160, 'Look closely!', '#fff', 44, 1.6)); },
   tap(B, p) {
@@ -7412,7 +7423,7 @@ renderYard = function (tab) {
    ===================================================================== */
 let FRAME_ERRS = 0, HALTED = false, SAVE_T = 0, SAVE_SIG = '';
 function noteError(err) {
-  try { localStorage.setItem('quackHarbor.lastError', JSON.stringify({ t: Date.now(), ver: '1.8', level: G && G.L, msg: String((err && err.message) || err), stack: String((err && err.stack) || '').slice(0, 1500) })); } catch (e) {}
+  try { localStorage.setItem('quackHarbor.lastError', JSON.stringify({ t: Date.now(), ver: '1.8.1', level: G && G.L, msg: String((err && err.message) || err), stack: String((err && err.stack) || '').slice(0, 1500) })); } catch (e) {}
 }
 function failSafe() {
   if (HALTED) return; HALTED = true;
@@ -7578,11 +7589,13 @@ renderEggs = function () {
 };
 
 /* ---------- play log: every level, fight and bonus stage on this device ---------- */
-const LOG_MAX = 500;
-function logPlay(e) { if (!PROFILE) return; PROFILE.log = PROFILE.log || []; PROFILE.log.push(e); if (PROFILE.log.length > LOG_MAX) PROFILE.log.splice(0, PROFILE.log.length - LOG_MAX); }
+const LOG_MAX = 500, APP_VER = '1.8.1';
+const logSince = k => G.st0 ? ((PROFILE.stats[k] || 0) - (G.st0[k] || 0)) : 0;
+function logPlay(e) { if (!PROFILE) return; if ((e.result === 'quit' || e.result === 'restart') && e.sec < 5) return; e.ver = APP_VER; PROFILE.log = PROFILE.log || []; PROFILE.log.push(e); if (PROFILE.log.length > LOG_MAX) PROFILE.log.splice(0, PROFILE.log.length - LOG_MAX); }
 const logStars = () => G.mode === 'little' ? (G.lost <= 1 ? 3 : G.lost <= 3 ? 2 : 1) : (G.lost === 0 ? 3 : G.lost === 1 ? 2 : 1);
 const levelEntry = result => ({ at: Date.now(), L: G.L, kind: G.pirates ? 'pirates' : G.isBoss ? 'boss' : 'level', mode: G.mode, result, sec: Math.round(G.t),
-  hits: G.lost, ducks: G.delivered, goal: G.P.goal, coins: G.coins, gems: G.gems, stars: result === 'won' ? logStars() : 0 });
+  hits: G.lost, ducks: G.delivered, goal: G.P.goal, coins: G.coins, gems: G.gems, stars: result === 'won' ? logStars() : 0,
+  hearts: G.hearts0 || 0, bridges: (G.bridges || []).length, bduck: logSince('bridge'), fish: logSince('fish'), gifts: logSince('gulls') + logSince('bottles'), daily: G.voyage ? 1 : 0, missions: (PROFILE.mis && PROFILE.mis.done) || 0 });
 const _showWinV15 = showWin; showWin = function () { logPlay(levelEntry('won')); ECON.jarGems = G.L > LOOP_LEN && !G.pirates ? 1 : 2; _showWinV15(); };
 const _showLoseV15 = showLose; showLose = function () { logPlay(levelEntry('lost')); _showLoseV15(); };
 const _leaveGameV15 = leaveGame; leaveGame = function () { if (G && !G.won && !G.over) logPlay(levelEntry('quit')); _leaveGameV15(); };
@@ -7593,10 +7606,10 @@ showBonusResult = function () {
   _bonusResultV15();
 };
 SCREENS.push('scr-stats');
-const LOG_COLS = ['date', 'level', 'kind', 'mode', 'result', 'seconds', 'hits', 'ducks', 'goal', 'coins', 'gems', 'stars'];
+const LOG_COLS = ['date', 'level', 'kind', 'mode', 'result', 'seconds', 'hits', 'ducks', 'goal', 'coins', 'gems', 'stars', 'version', 'hearts', 'bridges', 'bridge_ducks', 'fish', 'gifts', 'daily_voyage', 'missions_done'];
 function logCsv(p) {
   const pad = n => String(n).padStart(2, '0'), day = t => { const d = new Date(t); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
-  return [LOG_COLS.join(','), ...(p.log || []).map(e => [day(e.at), e.L, e.kind, e.mode, e.result, e.sec, e.hits, e.ducks, e.goal, e.coins, e.gems, e.stars].join(','))].join('\n');
+  return [LOG_COLS.join(','), ...(p.log || []).map(e => [day(e.at), e.L, e.kind, e.mode, e.result, e.sec, e.hits, e.ducks, e.goal, e.coins, e.gems, e.stars, e.ver, e.hearts, e.bridges, e.bduck, e.fish, e.gifts, e.daily, e.missions].map(v => v == null ? '' : v).join(','))].join('\n');
 }
 function renderStats() {
   const log = PROFILE.log || [], lv = log.filter(e => e.kind === 'level'), recent = lv.slice(-30), wins = recent.filter(e => e.result === 'won');
@@ -8591,6 +8604,13 @@ startLevel = function (L) {
   G.bridges = bridgesFor(L, ISLANDS);
   if (G.bridges.length) { clearBridgeLegs(); if (typeof buildStatic === 'function') buildStatic(); }
   initHarborLife();
+  // v1.8.1: Grown-up captains keep at most 4 hearts in the second loop and 3 after that (shield and Second Wind still count)
+  const loop = Math.floor((L - 1) / LOOP_LEN);
+  if (G.mode === 'grown' && loop >= 1) {
+    const cap = Math.max(3, 5 - loop);
+    if (G.hearts > cap) { G.S.hearts = cap; G.hearts = cap; if (PROFILE && misOf(PROFILE) && !PROFILE.seen.cap) { PROFILE.seen.cap = 1; toast('Rough seas!', `Grown-up captains get ${cap} hearts this far out. Bumps count now!`, 'heart', '#ff4d6d'); } }
+  }
+  G.hearts0 = G.hearts; G.st0 = PROFILE ? { ...PROFILE.stats } : null;
   if (voyage) { G.voyage = true; G.P.goldChance = Math.max(G.P.goldChance || 0, 0.35); G.coinRate = (G.coinRate || 1) * 2; }
 };
 const _startGameV18 = startGame;
